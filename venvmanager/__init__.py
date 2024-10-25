@@ -23,7 +23,7 @@ class PackageListEntry(TypedDict):
     version: Version
 
 
-class EnvManager:
+class VenvManager:
     """
     A manager for handling operations within a Python virtual environment,
     such as installing packages, retrieving installed packages, and checking for updates.
@@ -31,7 +31,7 @@ class EnvManager:
 
     def __init__(self, env_path: str):
         """
-        Initialize an EnvManager instance with the specified virtual environment path.
+        Initialize an VenvManager instance with the specified virtual environment path.
 
         Args:
             env_path (str): Path to the virtual environment.
@@ -60,12 +60,12 @@ class EnvManager:
         return python_exe
 
     @classmethod
-    def from_current_runtime(cls) -> "EnvManager":
+    def from_current_runtime(cls) -> "VenvManager":
         """
-        Create an EnvManager instance from the current Python runtime.
+        Create an VenvManager instance from the current Python runtime.
 
         Returns:
-            EnvManager: An EnvManager instance.
+            VenvManager: An VenvManager instance.
         """
         env_path = os.path.dirname(os.path.dirname(sys.executable))
         return cls(env_path)
@@ -266,7 +266,7 @@ class EnvManager:
             raise ValueError("Failed to uninstall package.") from exc
 
 
-def create_virtual_env(env_path: str) -> EnvManager:
+def create_virtual_env(env_path: str) -> VenvManager:
     """
     Create a virtual environment at the specified path.
 
@@ -274,24 +274,24 @@ def create_virtual_env(env_path: str) -> EnvManager:
         env_path (str): Path where the virtual environment will be created.
 
     Returns:
-        EnvManager: An EnvManager instance managing the new environment.
+        VenvManager: An VenvManager instance managing the new environment.
     """
     print(f"Creating virtual environment at {env_path}...")
     builder = venv.EnvBuilder(with_pip=True)
     builder.create(env_path)
     print("Virtual environment created.")
-    return EnvManager(env_path)
+    return VenvManager(env_path)
 
 
-def get_or_create_virtual_env(env_path: str) -> Tuple[EnvManager, bool]:
+def get_or_create_virtual_env(env_path: str) -> Tuple[VenvManager, bool]:
     """
-    Return an EnvManager instance, creating the environment if necessary.
+    Return an VenvManager instance, creating the environment if necessary.
 
     Args:
         env_path (str): Path to the virtual environment.
 
     Returns:
-        EnvManager: An instance of EnvManager.
+        VenvManager: An instance of VenvManager.
         bool: True if the environment was created, False if it already existed.
 
     Raises:
@@ -300,28 +300,28 @@ def get_or_create_virtual_env(env_path: str) -> Tuple[EnvManager, bool]:
     if not os.path.isdir(env_path):
         return create_virtual_env(env_path), True
     try:
-        return EnvManager(env_path), False
+        return VenvManager(env_path), False
     except FileNotFoundError as exc:
         raise ValueError(
             f"Directory {env_path} does not contain a valid virtual environment."
         ) from exc
 
 
-def get_virtual_env(env_path: str) -> EnvManager:
+def get_virtual_env(env_path: str) -> VenvManager:
     """
-    Return an EnvManager instance for an existing virtual environment.
+    Return an VenvManager instance for an existing virtual environment.
 
     Args:
         env_path (str): Path to the virtual environment.
 
     Returns:
-        EnvManager: An instance of EnvManager.
+        VenvManager: An instance of VenvManager.
 
     Raises:
         ValueError: If the specified directory does not contain a valid environment.
     """
     try:
-        return EnvManager(env_path)
+        return VenvManager(env_path)
     except FileNotFoundError as exc:
         raise ValueError(
             f"Directory {env_path} does not contain a valid virtual environment."
