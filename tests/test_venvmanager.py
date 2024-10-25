@@ -1,7 +1,7 @@
 import unittest
 from unittest.mock import patch
 from packaging.version import Version
-from venvmanager import (
+from venvmngr import (
     VenvManager,
     create_virtual_env,
     get_or_create_virtual_env,
@@ -56,8 +56,8 @@ class TestVenvManager(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.temppath)
 
-    @patch("venvmanager.os.path.isfile")
-    @patch("venvmanager.platform.system")
+    @patch("venvmngr.os.path.isfile")
+    @patch("venvmngr.platform.system")
     def test_get_python_executable_windows(self, mock_platform, mock_isfile):
         # Test for Windows environment
         mock_platform.return_value = "Windows"
@@ -67,8 +67,8 @@ class TestVenvManager(unittest.TestCase):
             os.path.join(self.env_path, "Scripts", "python.exe"),
         )
 
-    @patch("venvmanager.os.path.isfile")
-    @patch("venvmanager.platform.system")
+    @patch("venvmngr.os.path.isfile")
+    @patch("venvmngr.platform.system")
     def test_get_python_executable_unix(self, mock_platform, mock_isfile):
         # Test for Unix-based environment
         mock_platform.return_value = "Linux"
