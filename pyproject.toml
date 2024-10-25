@@ -9,9 +9,11 @@ readme = "README.md"
 [tool.poetry.dependencies]
 python = ">=3.8"
 requests = "*"
+packaging = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
+pre-commit = "*"
 
 [build-system]
 requires = ["poetry-core"]
