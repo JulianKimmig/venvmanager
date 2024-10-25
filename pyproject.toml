@@ -1,0 +1,18 @@
+[tool.poetry]
+name = "envmanager"
+version = "0.1.0"
+description = "managing a local environment"
+authors = ["JulianKimmig <julian.kimmig@gmx.net>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8"
+requests = "*"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "*"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
