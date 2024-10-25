@@ -1,8 +1,8 @@
 import unittest
 from unittest.mock import patch
 from packaging.version import Version
-from envmanager import (
-    EnvManager,
+from venvmanager import (
+    VenvManager,
     create_virtual_env,
     get_or_create_virtual_env,
     get_virtual_env,
@@ -28,20 +28,20 @@ class TestGetOrCreateVirtualEnv(unittest.TestCase):
     def test_create_virtual_env(self):
         # Test creating a new virtual environment
         env_manager = create_virtual_env(self.env_path)
-        self.assertIsInstance(env_manager, EnvManager)
-        self.assertIsInstance(get_virtual_env(self.env_path), EnvManager)
+        self.assertIsInstance(env_manager, VenvManager)
+        self.assertIsInstance(get_virtual_env(self.env_path), VenvManager)
 
     def test_get_or_create_virtual_env_existing(self):
         # Test returning an existing virtual environment
         env_manager, created = get_or_create_virtual_env(self.env_path)
         self.assertTrue(created)
-        self.assertIsInstance(env_manager, EnvManager)
+        self.assertIsInstance(env_manager, VenvManager)
         env_manager, created = get_or_create_virtual_env(self.env_path)
         self.assertFalse(created)
-        self.assertIsInstance(env_manager, EnvManager)
+        self.assertIsInstance(env_manager, VenvManager)
 
 
-class TestEnvManager(unittest.TestCase):
+class TestVenvManager(unittest.TestCase):
     #
     @classmethod
     def setUpClass(cls):
@@ -56,8 +56,8 @@ class TestEnvManager(unittest.TestCase):
     def tearDownClass(cls):
         shutil.rmtree(cls.temppath)
 
-    @patch("envmanager.os.path.isfile")
-    @patch("envmanager.platform.system")
+    @patch("venvmanager.os.path.isfile")
+    @patch("venvmanager.platform.system")
     def test_get_python_executable_windows(self, mock_platform, mock_isfile):
         # Test for Windows environment
         mock_platform.return_value = "Windows"
@@ -67,8 +67,8 @@ class TestEnvManager(unittest.TestCase):
             os.path.join(self.env_path, "Scripts", "python.exe"),
         )
 
-    @patch("envmanager.os.path.isfile")
-    @patch("envmanager.platform.system")
+    @patch("venvmanager.os.path.isfile")
+    @patch("venvmanager.platform.system")
     def test_get_python_executable_unix(self, mock_platform, mock_isfile):
         # Test for Unix-based environment
         mock_platform.return_value = "Linux"
