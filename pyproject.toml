@@ -1,6 +1,6 @@
 [tool.poetry]
-name = "venvmanager"
-version = "0.1.0"
+name = "venvmngr"
+version = "0.1.1"
 description = "managing a local environment"
 authors = ["JulianKimmig <julian.kimmig@gmx.net>"]
 license = "MIT"
