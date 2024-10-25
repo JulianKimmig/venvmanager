@@ -1,0 +1,1 @@
+Manager for virtual environments
