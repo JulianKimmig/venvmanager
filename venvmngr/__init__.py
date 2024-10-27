@@ -302,50 +302,60 @@ def create_virtual_env(
     min_python: Optional[Union[str, Version]] = None,
     max_python: Optional[Union[str, Version]] = None,
     use: Literal["default", "latest"] = "default",
+    python_executable: Optional[str] = None,
 ) -> VenvManager:
     """
     Create a virtual environment at the specified path.
 
     Args:
         env_path (str): Path where the virtual environment will be created.
+        min_python (Optional[Union[str, Version]]): Minimum Python version.
+            Ignored if `python_executable` is provided.
+        max_python (Optional[Union[str, Version]]): Maximum Python version.
+            Ignored if `python_executable` is provided.
+        use (Literal["default", "latest"]): Strategy for selecting Python version.
+            Ignored if `python_executable` is provided.
+        python_executable (Optional[str]): Path to the Python executable to use.
+            If not provided, the appropriate system Python will be used.
 
     Returns:
         VenvManager: An VenvManager instance managing the new environment.
     """
 
-    pythons = locate_system_pythons()
+    if not python_executable:
+        pythons = locate_system_pythons()
 
-    if not pythons:
-        raise ValueError("No suitable system Python found.")
+        if not pythons:
+            raise ValueError("No suitable system Python found.")
 
-    # filter first
-    if min_python:
-        if isinstance(min_python, str):
-            min_python = Version(min_python)
+        # filter first
+        if min_python:
+            if isinstance(min_python, str):
+                min_python = Version(min_python)
 
-        pythons = [p for p in pythons if p["version"] >= min_python]
+            pythons = [p for p in pythons if p["version"] >= min_python]
 
-    if max_python:
-        if isinstance(max_python, str):
-            max_python = Version(max_python)
+        if max_python:
+            if isinstance(max_python, str):
+                max_python = Version(max_python)
 
-        pythons = [p for p in pythons if p["version"] <= max_python]
+            pythons = [p for p in pythons if p["version"] <= max_python]
 
-    if not pythons:
-        raise ValueError(
-            f"No suitable system Python found within version range {min_python} - {max_python}."
-        )
+        if not pythons:
+            raise ValueError(
+                f"No suitable system Python found within version range {min_python} - {max_python}."
+            )
 
-    if use == "latest":
-        python_mv = max(pythons, key=lambda x: x["version"])["version"]
-        pythons = [p for p in pythons if p["version"] == python_mv]
-    elif use == "default":
-        pass
+        if use == "latest":
+            python_mv = max(pythons, key=lambda x: x["version"])["version"]
+            pythons = [p for p in pythons if p["version"] == python_mv]
+        elif use == "default":
+            pass
 
-    python = pythons[0]["executable"]
+        python_executable = pythons[0]["executable"]
 
     # Create the virtual environment
-    subprocess.run([python, "-m", "venv", env_path], check=True)
+    subprocess.run([python_executable, "-m", "venv", env_path], check=True)
 
     return VenvManager(env_path)
 
