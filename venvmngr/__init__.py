@@ -3,9 +3,9 @@ import sys
 import subprocess
 import platform
 import json
-from typing import List, TypedDict, Optional, Tuple, Union
-import venv
+from typing import List, TypedDict, Optional, Tuple, Union, Literal
 from ._pypi import PackageData, GetPackageInfoError, get_package_info
+
 
 from packaging.version import Version
 
@@ -266,20 +266,97 @@ class VenvManager:
             raise ValueError("Failed to uninstall package.") from exc
 
 
-def create_virtual_env(env_path: str) -> VenvManager:
+def locate_system_pythons():
+    try:
+        # Use 'where' on Windows and 'which' on Unix-based systems
+        command = "where" if os.name == "nt" else "which"
+        result = subprocess.run([command, "python"], capture_output=True, text=True)
+        pyths = []
+        for line in result.stdout.strip().splitlines():
+            try:
+                versionresult = subprocess.run(
+                    [line, "--version"], check=True, capture_output=True, text=True
+                )
+                vers_string = versionresult.stdout
+                vers_string = Version(vers_string.split()[-1])
+
+            except Exception:
+                continue
+
+            print(line, vers_string)
+            if not vers_string:
+                continue
+            dat = {
+                "executable": line,
+                "version": vers_string,
+            }
+
+            pyths.append(dat)
+        return pyths
+    except Exception as exc:
+        raise ValueError("Failed to locate system Python.") from exc
+
+
+def create_virtual_env(
+    env_path: str,
+    min_python: Optional[Union[str, Version]] = None,
+    max_python: Optional[Union[str, Version]] = None,
+    use: Literal["default", "latest"] = "default",
+    python_executable: Optional[str] = None,
+) -> VenvManager:
     """
     Create a virtual environment at the specified path.
 
     Args:
         env_path (str): Path where the virtual environment will be created.
+        min_python (Optional[Union[str, Version]]): Minimum Python version.
+            Ignored if `python_executable` is provided.
+        max_python (Optional[Union[str, Version]]): Maximum Python version.
+            Ignored if `python_executable` is provided.
+        use (Literal["default", "latest"]): Strategy for selecting Python version.
+            Ignored if `python_executable` is provided.
+        python_executable (Optional[str]): Path to the Python executable to use.
+            If not provided, the appropriate system Python will be used.
 
     Returns:
         VenvManager: An VenvManager instance managing the new environment.
     """
-    print(f"Creating virtual environment at {env_path}...")
-    builder = venv.EnvBuilder(with_pip=True)
-    builder.create(env_path)
-    print("Virtual environment created.")
+
+    if not python_executable:
+        pythons = locate_system_pythons()
+
+        if not pythons:
+            raise ValueError("No suitable system Python found.")
+
+        # filter first
+        if min_python:
+            if isinstance(min_python, str):
+                min_python = Version(min_python)
+
+            pythons = [p for p in pythons if p["version"] >= min_python]
+
+        if max_python:
+            if isinstance(max_python, str):
+                max_python = Version(max_python)
+
+            pythons = [p for p in pythons if p["version"] <= max_python]
+
+        if not pythons:
+            raise ValueError(
+                f"No suitable system Python found within version range {min_python} - {max_python}."
+            )
+
+        if use == "latest":
+            python_mv = max(pythons, key=lambda x: x["version"])["version"]
+            pythons = [p for p in pythons if p["version"] == python_mv]
+        elif use == "default":
+            pass
+
+        python_executable = pythons[0]["executable"]
+
+    # Create the virtual environment
+    subprocess.run([python_executable, "-m", "venv", env_path], check=True)
+
     return VenvManager(env_path)
 
 
