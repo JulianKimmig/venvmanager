@@ -6,6 +6,7 @@ from venvmngr import (
     create_virtual_env,
     get_or_create_virtual_env,
     get_virtual_env,
+    locate_system_pythons,
 )
 import tempfile
 import shutil
@@ -39,6 +40,14 @@ class TestGetOrCreateVirtualEnv(unittest.TestCase):
         env_manager, created = get_or_create_virtual_env(self.env_path)
         self.assertFalse(created)
         self.assertIsInstance(env_manager, VenvManager)
+
+    def test_locate_system_python(self):
+        # Test locating the system Python executable
+        python_executables = locate_system_pythons()  #
+        print(python_executables)
+
+        self.assertGreaterEqual(len(python_executables), 1, python_executables)
+        self.assertTrue(os.path.isfile(python_executables[0]["executable"]))
 
 
 class TestVenvManager(unittest.TestCase):
