@@ -4,10 +4,10 @@ import subprocess
 import platform
 import json
 from typing import List, TypedDict, Optional, Tuple, Union, Literal
-from ._pypi import PackageData, GetPackageInfoError, get_package_info
-
-
+import asyncio
 from packaging.version import Version
+import psutil
+from ._pypi import PackageData, GetPackageInfoError, get_package_info
 
 
 class PackageListEntry(TypedDict):
@@ -240,7 +240,9 @@ class VenvManager:
 
         return latest_version > local_version, latest_version, local_version
 
-    def run_module(self, module_name: str, args: List[str] = []):
+    def run_module(
+        self, module_name: str, args: List[str] = [], block: bool = True, **kwargs
+    ) -> Union[subprocess.CompletedProcess, subprocess.Popen, psutil.Process, None]:
         """
         Run a module within the virtual environment.
 
@@ -249,7 +251,29 @@ class VenvManager:
             args (List[str]): List of arguments to pass to the module.
         """
         cmd = [self.python_exe, "-m", module_name, *args]
-        subprocess.run(cmd)
+
+        if block:
+            return subprocess.run(cmd, **kwargs)
+        else:
+            if os.environ.get("SUBPROCESS_MONITOR_PORT", None) is not None:
+                import subprocess_monitor
+
+                res = asyncio.run(
+                    subprocess_monitor.send_spawn_request(
+                        args[0],
+                        args[1:],
+                        env={},
+                        port=os.environ["SUBPROCESS_MONITOR_PORT"],
+                    )
+                )
+                pid = res["pid"]
+                # get the process from the pid
+                try:
+                    return psutil.Process(pid)
+                except psutil.NoSuchProcess:
+                    return None
+            else:
+                return subprocess.Popen(cmd, **kwargs)
 
     def remove_package(self, package_name: str):
         """
