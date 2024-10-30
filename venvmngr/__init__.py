@@ -267,6 +267,14 @@ class VenvManager:
                     )
                 )
                 pid = res["pid"]
+
+                def on_death():
+                    try:
+                        psutil.Process(pid).kill()
+                    except psutil.NoSuchProcess:
+                        pass
+
+                subprocess_monitor.call_on_manager_death(on_death)
                 # get the process from the pid
                 try:
                     return psutil.Process(pid)

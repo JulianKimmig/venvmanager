@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "venvmngr"
-version = "0.1.4"
+version = "0.1.5"
 description = "managing a local environment"
 authors = ["JulianKimmig <julian.kimmig@gmx.net>"]
 license = "MIT"
