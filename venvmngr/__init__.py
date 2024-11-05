@@ -392,7 +392,9 @@ def create_virtual_env(
     return VenvManager(env_path)
 
 
-def get_or_create_virtual_env(env_path: str) -> Tuple[VenvManager, bool]:
+def get_or_create_virtual_env(
+    env_path: str, **create_kwargs
+) -> Tuple[VenvManager, bool]:
     """
     Return an VenvManager instance, creating the environment if necessary.
 
@@ -407,7 +409,7 @@ def get_or_create_virtual_env(env_path: str) -> Tuple[VenvManager, bool]:
         ValueError: If the specified directory does not contain a valid environment.
     """
     if not os.path.isdir(env_path):
-        return create_virtual_env(env_path), True
+        return create_virtual_env(env_path, **create_kwargs), True
     try:
         return VenvManager(env_path), False
     except FileNotFoundError as exc:

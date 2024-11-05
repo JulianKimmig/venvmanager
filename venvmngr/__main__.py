@@ -57,7 +57,7 @@ def main():
         print(f"Virtual environment created at {env_path}")
 
     else:
-        env_manager = get_or_create_virtual_env(env_path)
+        env_manager, new = get_or_create_virtual_env(env_path)
 
         if args.command == "install":
             package = args.package
