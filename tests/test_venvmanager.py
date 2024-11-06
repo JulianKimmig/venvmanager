@@ -28,18 +28,40 @@ class TestGetOrCreateVirtualEnv(unittest.TestCase):
 
     def test_create_virtual_env(self):
         # Test creating a new virtual environment
-        env_manager = create_virtual_env(self.env_path)
+        msgs = []
+
+        def msg_callback(msg):
+            msgs.append(msg)
+
+        env_manager = create_virtual_env(self.env_path, stdout_callback=msg_callback)
         self.assertIsInstance(env_manager, VenvManager)
         self.assertIsInstance(get_virtual_env(self.env_path), VenvManager)
+        self.assertGreaterEqual(len(msgs), 0, msgs)  # no messages is possible
 
     def test_get_or_create_virtual_env_existing(self):
         # Test returning an existing virtual environment
-        env_manager, created = get_or_create_virtual_env(self.env_path)
+        msgs = []
+
+        def msg_callback(msg):
+            msgs.append(msg)
+
+        env_manager, created = get_or_create_virtual_env(
+            self.env_path, stdout_callback=msg_callback
+        )
         self.assertTrue(created)
         self.assertIsInstance(env_manager, VenvManager)
-        env_manager, created = get_or_create_virtual_env(self.env_path)
+        self.assertGreaterEqual(len(msgs), 0, msgs)  # no messages is possible
+
+        msgs = []
+
+        env_manager, created = get_or_create_virtual_env(
+            self.env_path, stdout_callback=msg_callback
+        )
         self.assertFalse(created)
         self.assertIsInstance(env_manager, VenvManager)
+        self.assertEqual(
+            len(msgs), 0, msgs
+        )  # no messages is expected since the environment already exists
 
     def test_locate_system_python(self):
         # Test locating the system Python executable
@@ -163,12 +185,20 @@ class TestVenvManager(unittest.TestCase):
         # Test package update
         self._assert_package_installed()
         self.assertTrue(self.env_manager.package_is_installed(self.testpackage_name))
-        self.env_manager.install_package(self.testpackage_name, upgrade=True)
+        msgs = []
+
+        def stdrecorder(msg):
+            msgs.append(msg)
+
+        self.env_manager.install_package(
+            self.testpackage_name, upgrade=True, stdout_callback=stdrecorder
+        )
         self.assertTrue(self.env_manager.package_is_installed(self.testpackage_name))
         self.assertGreater(
             self.env_manager.get_package_version(self.testpackage_name),
             Version(self.testpackage_version),
         )
+        self.assertGreaterEqual(len(msgs), 1, msgs)
 
     def test_run_module(self):
         # Test running a module

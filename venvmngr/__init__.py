@@ -4,10 +4,12 @@ import subprocess
 import platform
 import json
 from typing import List, TypedDict, Optional, Tuple, Union, Literal
+from collections.abc import Callable
 import asyncio
 from packaging.version import Version
 import psutil
 from ._pypi import PackageData, GetPackageInfoError, get_package_info
+import threading
 
 
 class PackageListEntry(TypedDict):
@@ -75,6 +77,8 @@ class VenvManager:
         package_name: str,
         version: Optional[Union[Version, str]] = None,
         upgrade: bool = False,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
     ):
         """
         Install a package in the virtual environment.
@@ -83,6 +87,8 @@ class VenvManager:
             package_name (str): The name of the package to install.
             version (Optional[str]): Specific version or version specifier.
             upgrade (bool): Whether to upgrade the package.
+            stdout_callback (Optional[Callable[[str], None]]): Callback function for stdout.
+            stderr_callback (Optional[Callable[[str], None]]): Callback function for stderr.
 
         Returns:
             bool: True if installation was successful, False otherwise.
@@ -115,10 +121,47 @@ class VenvManager:
         if upgrade:
             install_cmd.append("--upgrade")
 
-        try:
-            subprocess.check_call(install_cmd)
-        except subprocess.CalledProcessError as exc:
-            raise ValueError("Failed to install package.") from exc
+        process = subprocess.Popen(
+            install_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+        )
+
+        # Define a function to read and forward each stream in a separate thread
+        def read_stream(stream, callback):
+            for line in iter(stream.readline, ""):
+                if callback:
+                    callback(line)
+            stream.close()
+
+        # Start threads for stdout and stderr
+        stdout_thread = threading.Thread(
+            target=read_stream, args=(process.stdout, stdout_callback)
+        )
+        stderr_thread = threading.Thread(
+            target=read_stream, args=(process.stderr, stderr_callback)
+        )
+
+        stdout_thread.start()
+        stderr_thread.start()
+
+        # Wait for both threads to complete
+        stdout_thread.join()
+        stderr_thread.join()
+
+        # Wait for the process to complete
+        process.wait()
+
+        if process.returncode != 0:
+            raise ValueError(
+                f"Failed to install package via {' '.join(install_cmd)}"
+            ) from subprocess.CalledProcessError(process.returncode, process.args)
+
+        # try:
+        #     subprocess.check_call(install_cmd)
+        # except subprocess.CalledProcessError as exc:
+        #     raise ValueError("Failed to install package.") from exc
 
     def all_packages(self) -> List[PackageListEntry]:
         """
@@ -335,6 +378,8 @@ def create_virtual_env(
     max_python: Optional[Union[str, Version]] = None,
     use: Literal["default", "latest"] = "default",
     python_executable: Optional[str] = None,
+    stdout_callback: Optional[Callable[[str], None]] = None,
+    stderr_callback: Optional[Callable[[str], None]] = None,
 ) -> VenvManager:
     """
     Create a virtual environment at the specified path.
@@ -349,6 +394,8 @@ def create_virtual_env(
             Ignored if `python_executable` is provided.
         python_executable (Optional[str]): Path to the Python executable to use.
             If not provided, the appropriate system Python will be used.
+        stdout_callback (Optional[Callable[[str], None]]): Callback function for stdout.
+        stderr_callback (Optional[Callable[[str], None]]): Callback function for stderr.
 
     Returns:
         VenvManager: An VenvManager instance managing the new environment.
@@ -387,7 +434,41 @@ def create_virtual_env(
         python_executable = pythons[0]["executable"]
 
     # Create the virtual environment
-    subprocess.run([python_executable, "-m", "venv", env_path], check=True)
+    # Use Popen to create the virtual environment and stream output
+    process = subprocess.Popen(
+        [python_executable, "-m", "venv", env_path],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+
+    # Define a function to read and forward each stream in a separate thread
+    def read_stream(stream, callback):
+        for line in iter(stream.readline, ""):
+            if callback:
+                callback(line)
+        stream.close()
+
+    # Start threads for stdout and stderr
+    stdout_thread = threading.Thread(
+        target=read_stream, args=(process.stdout, stdout_callback)
+    )
+    stderr_thread = threading.Thread(
+        target=read_stream, args=(process.stderr, stderr_callback)
+    )
+
+    stdout_thread.start()
+    stderr_thread.start()
+
+    # Wait for both threads to complete
+    stdout_thread.join()
+    stderr_thread.join()
+
+    # Wait for the process to complete
+    process.wait()
+
+    if process.returncode != 0:
+        raise subprocess.CalledProcessError(process.returncode, process.args)
 
     return VenvManager(env_path)
 
