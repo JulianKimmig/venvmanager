@@ -755,13 +755,13 @@ use-chardet-on-py3 = ["chardet (>=3.0.2,<6)"]
 
 [[package]]
 name = "subprocess-monitor"
-version = "0.1.2"
+version = "0.1.3"
 description = "A service to manage monitor and spawn subprocess"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "subprocess_monitor-0.1.2-py3-none-any.whl", hash = "sha256:03d20b26012bb3fc18f2ea129100e6700e3e303783c4e3969482cfcdf68d9e63"},
-    {file = "subprocess_monitor-0.1.2.tar.gz", hash = "sha256:8c5e7c73c28736c0710c6716311d3e0566bbbd719b1e2c5c955846a2024e4b87"},
+    {file = "subprocess_monitor-0.1.3-py3-none-any.whl", hash = "sha256:c0e66633d6d02235948956331c84fcb107379b01a2cc0bc4769dcf8035b629a8"},
+    {file = "subprocess_monitor-0.1.3.tar.gz", hash = "sha256:cc9d7980d3d44b9826d88e4220dda4fc579a0043be8fd33313ef608c861222f2"},
 ]
 
 [package.dependencies]
