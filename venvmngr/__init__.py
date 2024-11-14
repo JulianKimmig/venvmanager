@@ -8,8 +8,9 @@ from collections.abc import Callable
 import asyncio
 from packaging.version import Version
 import psutil
-from ._pypi import PackageData, GetPackageInfoError, get_package_info
 import threading
+import subprocess_monitor
+from ._pypi import PackageData, GetPackageInfoError, get_package_info
 
 
 class PackageListEntry(TypedDict):
@@ -299,8 +300,6 @@ class VenvManager:
             return subprocess.run(cmd, **kwargs)
         else:
             if os.environ.get("SUBPROCESS_MONITOR_PORT", None) is not None:
-                import subprocess_monitor
-
                 res = asyncio.run(
                     subprocess_monitor.send_spawn_request(
                         args[0],
