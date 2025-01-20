@@ -2,11 +2,7 @@ import unittest
 from unittest.mock import patch
 from packaging.version import Version
 from venvmngr import (
-    VenvManager,
-    create_virtual_env,
-    get_or_create_virtual_env,
-    get_virtual_env,
-    locate_system_pythons,
+    UVVenvManager,
 )
 import tempfile
 import shutil
@@ -14,72 +10,14 @@ import os
 from pathlib import Path
 
 
-class TestGetOrCreateVirtualEnv(unittest.TestCase):
-    def setUp(self):
-        self.temppath = tempfile.mkdtemp()
-        self.env_path = os.path.join(self.temppath, "test_env")
-
-    def tearDown(self):
-        shutil.rmtree(self.temppath)
-
-    def test_get_unexisting_virtual_env(self):
-        # Test creating a new virtual environment
-        with self.assertRaises(ValueError):
-            get_virtual_env(self.env_path)
-
-    def test_create_virtual_env(self):
-        # Test creating a new virtual environment
-        msgs = []
-
-        def msg_callback(msg):
-            msgs.append(msg)
-
-        env_manager = create_virtual_env(self.env_path, stdout_callback=msg_callback)
-        self.assertIsInstance(env_manager, VenvManager)
-        self.assertIsInstance(get_virtual_env(self.env_path), VenvManager)
-        self.assertGreaterEqual(len(msgs), 0, msgs)  # no messages is possible
-
-    def test_get_or_create_virtual_env_existing(self):
-        # Test returning an existing virtual environment
-        msgs = []
-
-        def msg_callback(msg):
-            msgs.append(msg)
-
-        env_manager, created = get_or_create_virtual_env(
-            self.env_path, stdout_callback=msg_callback
-        )
-        self.assertTrue(created)
-        self.assertIsInstance(env_manager, VenvManager)
-        self.assertGreaterEqual(len(msgs), 0, msgs)  # no messages is possible
-
-        msgs = []
-
-        env_manager, created = get_or_create_virtual_env(
-            self.env_path, stdout_callback=msg_callback
-        )
-        self.assertFalse(created)
-        self.assertIsInstance(env_manager, VenvManager)
-        self.assertEqual(
-            len(msgs), 0, msgs
-        )  # no messages is expected since the environment already exists
-
-    def test_locate_system_python(self):
-        # Test locating the system Python executable
-        python_executables = locate_system_pythons()  #
-        print(python_executables)
-
-        self.assertGreaterEqual(len(python_executables), 1, python_executables)
-        self.assertTrue(os.path.isfile(python_executables[0]["executable"]))
-
-
-class TestVenvManager(unittest.TestCase):
+class TestUVVenvManager(unittest.TestCase):
     #
     @classmethod
     def setUpClass(cls):
         cls.temppath = tempfile.mkdtemp()
-        cls.env_path = os.path.join(cls.temppath, "test_env")
-        cls.env_manager, _ = get_or_create_virtual_env(cls.env_path)
+        cls.toml_path = Path(cls.temppath) / "pyproject.toml"
+        cls.env_manager, _ = UVVenvManager.get_or_create_virtual_env(cls.toml_path)
+        cls.env_path = cls.toml_path.parent / ".venv"
         cls.testpackage_name = "dummy_test"
         cls.testpackage_version = "0.1.2"
         super().setUpClass()
@@ -113,7 +51,10 @@ class TestVenvManager(unittest.TestCase):
     def test_install_package(self):
         # Test successful package installation
         self.env_manager.install_package(
-            self.testpackage_name, version=self.testpackage_version
+            self.testpackage_name,
+            version=self.testpackage_version,
+            stdout_callback=print,
+            stderr_callback=print,
         )
         self.assertTrue(self.env_manager.package_is_installed(self.testpackage_name))
 
@@ -192,8 +133,13 @@ class TestVenvManager(unittest.TestCase):
             msgs.append(msg)
 
         self.env_manager.install_package(
-            self.testpackage_name, upgrade=True, stdout_callback=stdrecorder
+            self.testpackage_name,
+            upgrade=True,
+            stdout_callback=stdrecorder,
+            stderr_callback=stdrecorder,
+            version=">=" + self.testpackage_version,
         )
+        print(msgs)
         self.assertTrue(self.env_manager.package_is_installed(self.testpackage_name))
         self.assertGreater(
             self.env_manager.get_package_version(self.testpackage_name),
@@ -212,3 +158,12 @@ class TestVenvManager(unittest.TestCase):
         self.assertTrue(self.env_manager.package_is_installed(self.testpackage_name))
         self.env_manager.remove_package(self.testpackage_name)
         self.assertFalse(self.env_manager.package_is_installed(self.testpackage_name))
+
+    def test_check_toml(self):
+        if not self.toml_path.exists():
+            raise FileNotFoundError("pyproject.toml file not found.")
+        with open(self.toml_path, "r") as f:
+            content = f.read()
+
+        print(content)
+        return True
