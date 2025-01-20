@@ -155,3 +155,31 @@ class UVVenvManager(VenvManager):
         if toml_path.exists() and env_path.exists():
             return cls(toml_path, env_path, **kwargs), False
         return cls.create_virtual_env(toml_path, **kwargs), True
+
+    @classmethod
+    def get_virtual_env(
+        cls,
+        env_path: Union[str, Path],
+    ) -> VenvManager:
+        """
+        Return an VenvManager instance for an existing virtual environment.
+
+        Args:
+            env_path (Union[str, Path]): Path to the virtual environment.
+
+        Returns:
+            VenvManager: An instance of VenvManager.
+
+        Raises:
+            ValueError: If the specified directory does not contain a valid environment.
+        """  #
+        if not isinstance(env_path, Path):
+            env_path = Path(env_path)
+        if not env_path.exists():
+            raise ValueError("Invalid environment path.")
+        if env_path.name == "pyproject.toml":
+            tomlpath = env_path
+            env_path = env_path.parent / ".venv"
+            return UVVenvManager(tomlpath, env_path)
+
+        return UVVenvManager(env_path.parent / "pyproject.toml", env_path)

@@ -110,6 +110,10 @@ class TestVenvManager(unittest.TestCase):
             Path(self.env_path) / "bin" / "python",
         )
 
+    def test_get_envmanager(self):
+        # Test getting the environment manager
+        VenvManager.get_virtual_env(self.env_path).env_path = self.env_path
+
     def test_install_package(self):
         # Test successful package installation
         self.env_manager.install_package(
