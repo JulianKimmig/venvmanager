@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "venvmngr"
-version = "0.1.8"
+version = "0.1.9"
 description = "managing a local environment"
 authors = ["JulianKimmig <julian.kimmig@gmx.net>"]
 license = "MIT"
@@ -11,6 +11,7 @@ python = ">=3.9"
 requests = "*"
 packaging = "*"
 subprocess-monitor = ">=0.2.0"
+uv = ">=0.5.21"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "*"
