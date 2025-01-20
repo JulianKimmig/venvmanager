@@ -133,6 +133,8 @@ class UVVenvManager(VenvManager):
         if create_path:
             if not toml_path.parent.exists():
                 toml_path.parent.mkdir(parents=True)
+        if not toml_path.parent.exists():
+            raise ValueError("Invalid toml path.")
         return toml_path.absolute()
 
     @classmethod
@@ -178,8 +180,12 @@ class UVVenvManager(VenvManager):
         if not env_path.exists():
             raise ValueError("Invalid environment path.")
         if env_path.name == "pyproject.toml":
-            tomlpath = env_path
+            tomlpath = cls.check_toml_path(env_path)
+            if not tomlpath.exists():
+                raise ValueError("Invalid toml path.")
             env_path = env_path.parent / ".venv"
+            if not env_path.exists():
+                raise ValueError("Invalid environment path.")
             return UVVenvManager(tomlpath, env_path)
 
         return UVVenvManager(env_path.parent / "pyproject.toml", env_path)
