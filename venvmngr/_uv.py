@@ -37,7 +37,7 @@ class UVVenvManager(VenvManager):
         with self:
             # if ">" in package_version or "<" in package_version:
             # package_version = f'"{package_version}"'
-            _install = ["uv", "add", package_version]
+            _install = ["python", "-m", "uv", "add", package_version]
 
             run_subprocess_with_streams(
                 _install,
@@ -46,14 +46,21 @@ class UVVenvManager(VenvManager):
             )
 
             if upgrade:
-                _upgrade = ["uv", "lock", "--upgrade-package", package_name]
+                _upgrade = [
+                    "python",
+                    "-m",
+                    "uv",
+                    "lock",
+                    "--upgrade-package",
+                    package_name,
+                ]
                 run_subprocess_with_streams(
                     _upgrade,
                     stdout_callback,
                     stderr_callback,
                 )
             run_subprocess_with_streams(
-                ["uv", "sync"], stdout_callback, stderr_callback
+                ["python", "-m", "uv", "sync"], stdout_callback, stderr_callback
             )
 
     def remove_package(self, package_name: str):
@@ -65,11 +72,11 @@ class UVVenvManager(VenvManager):
         """
         with self:
             try:
-                subprocess.check_call(["uv", "remove", package_name])
+                subprocess.check_call(["python", "-m", "uv", "remove", package_name])
             except subprocess.CalledProcessError as exc:
                 raise ValueError("Failed to uninstall package.") from exc
             run_subprocess_with_streams(
-                ["uv", "sync"],
+                ["python", "-m", "uv", "sync"],
             )
 
     @classmethod
@@ -99,7 +106,7 @@ class UVVenvManager(VenvManager):
 
             # Create the virtual environment
             # Use Popen to create the virtual environment and stream output
-            _env_init = ["uv", "venv"]
+            _env_init = ["python", "-m", "uv", "venv"]
             if python:
                 _env_init.extend(["--python", str(python)])
 
