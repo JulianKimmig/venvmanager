@@ -102,7 +102,7 @@ class UVVenvManager(VenvManager):
         try:
             os.chdir(toml_path.parent)
             if not toml_path.exists():
-                subprocess.run(["uv", "init", "--no-workspace"])
+                subprocess.run(["python", "-m", "uv", "init", "--no-workspace"])
 
             # Create the virtual environment
             # Use Popen to create the virtual environment and stream output
