@@ -6,7 +6,10 @@ from collections.abc import Callable
 import subprocess
 from packaging.version import Version
 from ._venv import VenvManager
-from .utils import run_subprocess_with_streams
+from .utils import run_subprocess_with_streams, get_python_executable
+
+
+PYEXE = get_python_executable()
 
 
 class UVVenvManager(VenvManager):
@@ -37,7 +40,7 @@ class UVVenvManager(VenvManager):
         with self:
             # if ">" in package_version or "<" in package_version:
             # package_version = f'"{package_version}"'
-            _install = ["python", "-m", "uv", "add", package_version]
+            _install = [PYEXE, "-m", "uv", "add", package_version]
 
             run_subprocess_with_streams(
                 _install,
@@ -47,7 +50,7 @@ class UVVenvManager(VenvManager):
 
             if upgrade:
                 _upgrade = [
-                    "python",
+                    PYEXE,
                     "-m",
                     "uv",
                     "lock",
@@ -60,7 +63,7 @@ class UVVenvManager(VenvManager):
                     stderr_callback,
                 )
             run_subprocess_with_streams(
-                ["python", "-m", "uv", "sync"], stdout_callback, stderr_callback
+                [PYEXE, "-m", "uv", "sync"], stdout_callback, stderr_callback
             )
 
     def remove_package(self, package_name: str):
@@ -72,11 +75,11 @@ class UVVenvManager(VenvManager):
         """
         with self:
             try:
-                subprocess.check_call(["python", "-m", "uv", "remove", package_name])
+                subprocess.check_call([PYEXE, "-m", "uv", "remove", package_name])
             except subprocess.CalledProcessError as exc:
                 raise ValueError("Failed to uninstall package.") from exc
             run_subprocess_with_streams(
-                ["python", "-m", "uv", "sync"],
+                [PYEXE, "-m", "uv", "sync"],
             )
 
     @classmethod
@@ -102,11 +105,11 @@ class UVVenvManager(VenvManager):
         try:
             os.chdir(toml_path.parent)
             if not toml_path.exists():
-                subprocess.run(["python", "-m", "uv", "init", "--no-workspace"])
+                subprocess.run([PYEXE, "-m", "uv", "init", "--no-workspace"])
 
             # Create the virtual environment
             # Use Popen to create the virtual environment and stream output
-            _env_init = ["python", "-m", "uv", "venv"]
+            _env_init = [PYEXE, "-m", "uv", "venv"]
             if python:
                 _env_init.extend(["--python", str(python)])
 

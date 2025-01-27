@@ -2,6 +2,8 @@ import os
 import subprocess
 from packaging.version import Version
 import threading
+import sys
+import shutil
 
 
 def locate_system_pythons():
@@ -71,3 +73,24 @@ def run_subprocess_with_streams(args, stdout_callback=None, stderr_callback=None
         raise ValueError(
             f"Failed to call {' '.join(args)}"
         ) from subprocess.CalledProcessError(process.returncode, process.args)
+
+
+def get_python_executable() -> str:
+    """
+    Get the Python executable path.
+    Handles PyInstaller packaging scenarios where `sys.executable`
+    may not point to a valid Python interpreter.
+
+    Returns:
+        str: Path to the Python interpreter.
+    """
+    # Check if running in a PyInstaller environment
+    if hasattr(sys, "_MEIPASS"):
+        # Try to find a system Python
+        python_path = shutil.which("python")
+        if not python_path:
+            raise RuntimeError("Could not locate a valid Python interpreter.")
+        return python_path
+
+    # Default to the current executable (should be a valid Python interpreter)
+    return sys.executable
