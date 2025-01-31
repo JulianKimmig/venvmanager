@@ -13,7 +13,7 @@ PYEXE = get_python_executable()
 
 
 class UVVenvManager(VenvManager):
-    def __init__(self, toml_path, env_path):
+    def __init__(self, toml_path, env_path, **kwargs):
         self.toml_path = toml_path
         self._enterpath = None
         super().__init__(env_path)
@@ -87,6 +87,7 @@ class UVVenvManager(VenvManager):
         cls,
         toml_path: Union[str, Path],
         python: Optional[Union[str, Version]] = None,
+        description: Optional[str] = None,
         stdout_callback: Optional[Callable[[str], None]] = None,
         stderr_callback: Optional[Callable[[str], None]] = None,
     ) -> UVVenvManager:
@@ -105,7 +106,20 @@ class UVVenvManager(VenvManager):
         try:
             os.chdir(toml_path.parent)
             if not toml_path.exists():
-                subprocess.run([PYEXE, "-m", "uv", "init", "--no-workspace"])
+                init_cmd = [
+                    PYEXE,
+                    "-m",
+                    "uv",
+                    "init",
+                    "--no-workspace",
+                    "--no-pin-python",
+                    "--no-readme",
+                ]
+                if python:
+                    init_cmd.extend(["--python", str(python)])
+                if description:
+                    init_cmd.extend(["--description", description])
+                subprocess.run(init_cmd)
 
             # Create the virtual environment
             # Use Popen to create the virtual environment and stream output
