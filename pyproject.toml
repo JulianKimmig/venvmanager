@@ -1,6 +1,6 @@
 [project]
 name = "venvmngr"
-version = "0.1.14"
+version = "0.1.15"
 description = "managing a local environment"
 readme = "README.md"
 requires-python = ">=3.9"
