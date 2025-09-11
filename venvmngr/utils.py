@@ -1,3 +1,5 @@
+"""Utility helpers for process execution and interpreter discovery."""
+
 import os
 import subprocess
 from packaging.version import Version
@@ -7,6 +9,17 @@ import shutil
 
 
 def locate_system_pythons():
+    """Discover available system Python interpreters.
+
+    Uses `where` on Windows and `which` on POSIX to find `python`
+    executables, then probes each for its version.
+
+    Returns:
+        list[dict]: A list of dicts with keys `executable` and `version`.
+
+    Raises:
+        ValueError: If discovery fails unexpectedly.
+    """
     try:
         # Use 'where' on Windows and 'which' on Unix-based systems
         command = "where" if os.name == "nt" else "which"
@@ -37,6 +50,16 @@ def locate_system_pythons():
 
 
 def run_subprocess_with_streams(args, stdout_callback=None, stderr_callback=None):
+    """Run a subprocess and stream stdout/stderr to callbacks.
+
+    Args:
+        args (list[str]): Command and arguments to execute.
+        stdout_callback (Callable[[str], None] | None): Callback for stdout lines.
+        stderr_callback (Callable[[str], None] | None): Callback for stderr lines.
+
+    Raises:
+        ValueError: If the process returns a non-zero exit code.
+    """
     process = subprocess.Popen(
         args,
         stdout=subprocess.PIPE,
@@ -46,6 +69,7 @@ def run_subprocess_with_streams(args, stdout_callback=None, stderr_callback=None
 
     # Define a function to read and forward each stream in a separate thread
     def read_stream(stream, callback):
+        """Read lines from a stream and forward to a callback."""
         for line in iter(stream.readline, ""):
             if callback:
                 callback(line)

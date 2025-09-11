@@ -1,3 +1,9 @@
+"""Lightweight PyPI client types and helpers.
+
+Contains structured TypedDicts mirroring the PyPI JSON API and a
+small helper to fetch package metadata for basic queries.
+"""
+
 from typing import Dict, List, TypedDict
 import requests
 

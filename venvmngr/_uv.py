@@ -1,3 +1,9 @@
+"""uv-backed virtual environment manager.
+
+Implements a `VenvManager` variant that leverages the `uv` CLI and a
+`pyproject.toml` to create, sync and manage project virtual environments.
+"""
+
 from __future__ import annotations
 from pathlib import Path
 from typing import Union, Tuple, Optional
@@ -13,22 +19,40 @@ PYEXE = get_python_executable()
 
 
 class UVVenvManager(VenvManager):
+    """Venv manager powered by the `uv` tool.
+
+    This manager assumes a `pyproject.toml` and uses `uv` to add/remove
+    dependencies and to create/sync the environment.
+    """
 
     @classmethod
     def get_default_venv_name(cls) -> str:
+        """Return the default virtual environment directory name.
+
+        Reads `UV_PROJECT_ENVIRONMENT` and falls back to `.venv`.
+        """
         return os.environ.get("UV_PROJECT_ENVIRONMENT", ".venv")
 
     def __init__(self, toml_path, env_path, **kwargs):
+        """Initialize the manager.
+
+        Args:
+            toml_path (Path | str): Path to the `pyproject.toml`.
+            env_path (Path | str): Path to the environment directory.
+            **kwargs: Forwarded to the base manager if applicable.
+        """
         self.toml_path = toml_path
         self._enterpath = None
         super().__init__(env_path)
 
     def __enter__(self):
+        """Enter the project directory context for uv operations."""
         self._enterpath = os.getcwd()
         os.chdir(self.toml_path.parent)
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
+        """Restore previous working directory when leaving the context."""
         if self._enterpath:
             os.chdir(self._enterpath)
             self._enterpath = None
@@ -41,6 +65,15 @@ class UVVenvManager(VenvManager):
         stdout_callback: Optional[Callable[[str], None]] = None,
         stderr_callback: Optional[Callable[[str], None]] = None,
     ):
+        """Install a dependency using uv.
+
+        Args:
+            package_name: Package to install.
+            version: Specific version or specifier.
+            upgrade: Whether to upgrade the package.
+            stdout_callback: Optional callback for stdout lines.
+            stderr_callback: Optional callback for stderr lines.
+        """
         package_version = self.package_name_cleaner(package_name, version)
         with self:
             # if ">" in package_version or "<" in package_version:

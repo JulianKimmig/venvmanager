@@ -1,4 +1,8 @@
-# __main__.py
+"""CLI entry point for venvmngr.
+
+Provides a thin command-line interface to create and manage
+virtual environments and packages using the public API.
+"""
 
 import argparse
 from pathlib import Path
@@ -6,6 +10,12 @@ from . import create_virtual_env, get_or_create_virtual_env
 
 
 def main():
+    """Run the venv manager CLI.
+
+    Parses arguments, dispatches the requested subcommand and prints
+    simple, user-friendly output. Intended to be invoked as
+    `python -m venvmngr` or via an installed console script.
+    """
     parser = argparse.ArgumentParser(
         description="Manage Python virtual environments and packages"
     )
