@@ -13,6 +13,11 @@ PYEXE = get_python_executable()
 
 
 class UVVenvManager(VenvManager):
+
+    @classmethod
+    def get_default_venv_name(cls) -> str:
+        return os.environ.get("UV_PROJECT_ENVIRONMENT", ".venv")
+
     def __init__(self, toml_path, env_path, **kwargs):
         self.toml_path = toml_path
         self._enterpath = None
@@ -133,7 +138,7 @@ class UVVenvManager(VenvManager):
                 stderr_callback,
             )
 
-            env_path = toml_path.parent / ".venv"
+            env_path = toml_path.parent / cls.get_default_venv_name()
             mng = cls(toml_path, env_path)
             mng.install_package("pip", upgrade=True)
         finally:
@@ -177,7 +182,7 @@ class UVVenvManager(VenvManager):
             indicating if the environment was created.
         """
         toml_path = cls.check_toml_path(toml_path)
-        env_path = toml_path.parent / ".venv"
+        env_path = toml_path.parent / cls.get_default_venv_name()
         if toml_path.exists() and env_path.exists():
             return cls(toml_path, env_path, **kwargs), False
         return cls.create_virtual_env(toml_path, **kwargs), True
@@ -207,7 +212,7 @@ class UVVenvManager(VenvManager):
             tomlpath = cls.check_toml_path(env_path)
             if not tomlpath.exists():
                 raise ValueError("Invalid toml path.")
-            env_path = env_path.parent / ".venv"
+            env_path = env_path.parent / cls.get_default_venv_name()
             if not env_path.exists():
                 raise ValueError("Invalid environment path.")
             return UVVenvManager(tomlpath, env_path)

@@ -17,7 +17,7 @@ class TestUVVenvManager(unittest.TestCase):
         cls.temppath = tempfile.mkdtemp()
         cls.toml_path = Path(cls.temppath) / "pyproject.toml"
         cls.env_manager, _ = UVVenvManager.get_or_create_virtual_env(cls.toml_path)
-        cls.env_path = cls.toml_path.parent / ".venv"
+        cls.env_path = cls.toml_path.parent / UVVenvManager.get_default_venv_name()
         cls.testpackage_name = "dummy_test"
         cls.testpackage_version = "0.1.2"
         super().setUpClass()
