@@ -1,3 +1,10 @@
+"""Abstract base implementation for virtual environment managers.
+
+Defines the `BaseVenvManager` protocol used by concrete implementations
+that manage Python virtual environments and interact with PyPI.
+Typed dicts and helpers shared by backends live here.
+"""
+
 from abc import ABC, abstractmethod
 import os
 import sys
@@ -238,6 +245,7 @@ class BaseVenvManager(ABC):
                 pid = res["pid"]
 
                 def on_death():
+                    """Kill the spawned process if the manager dies."""
                     try:
                         psutil.Process(pid).kill()
                     except psutil.NoSuchProcess:

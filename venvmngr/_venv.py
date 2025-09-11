@@ -1,3 +1,9 @@
+"""Standard library venv-based environment manager.
+
+Provides a concrete implementation of `BaseVenvManager` using
+the built-in `venv` module and `pip` to manage packages.
+"""
+
 from __future__ import annotations
 import platform
 import json
@@ -39,6 +45,23 @@ class VenvManager(BaseVenvManager):
     def package_name_cleaner(
         self, package_name: str, version: Optional[Union[Version, str]] = None
     ) -> str:
+        """Normalize and compose a package specifier.
+
+        Ensures a clean package name, replaces underscores with hyphens
+        and, if a version is provided, returns either an exact pin
+        (``name==X``) or preserves an operator-based specifier
+        (e.g. ``name>=X``).
+
+        Args:
+            package_name: Raw package name.
+            version: Optional version or specifier.
+
+        Returns:
+            str: A normalized package specifier suitable for pip/uv.
+
+        Raises:
+            ValueError: If the package name is empty or invalid.
+        """
         if isinstance(version, Version):
             version = str(version)
 

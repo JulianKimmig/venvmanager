@@ -1,5 +1,5 @@
 name: cache_py
-description: Installs python, pip and poetry and caches the python environment
+description: Installs Python and uv, and caches the uv environment
 inputs:
   python_version:
     description: "Python version to install"
@@ -16,21 +16,12 @@ runs:
         python-version: ${{ inputs.python_version }}
         allow-prereleases: true
 
-    - uses: actions/cache@v3
-      name: Cache Python environment
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Cache uv
+      uses: actions/cache@v3
       with:
-        path: ~/.cache/pip
-        key: py-${{ steps.setup_python.outputs.python-version }}-${{ runner.os }}
-
-    - name: Install Poetry
-      shell: bash
-      run: |
-        python -m pip install --upgrade pip
-        pip install poetry
-        echo "python-version=${{ steps.setup_python.outputs.python-version }}" >> "$GITHUB_OUTPUT"
-
-    - name: Setup a local virtual environment (if no poetry.toml file)
-      shell: bash
-      run: |
-        poetry config virtualenvs.create true --local
-        poetry config virtualenvs.in-project true --local
+        path: |
+          ~/.cache/uv
+        key: uv-${{ steps.setup_python.outputs.python-version }}-${{ runner.os }}-${{ hashFiles('**/pyproject.toml', '**/uv.lock') }}
