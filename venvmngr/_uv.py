@@ -179,15 +179,23 @@ class UVVenvManager(VenvManager):
         return mng
 
     @staticmethod
-    def check_toml_path(toml_path: Union[str, Path], create_path=False) -> bool:
-        """
-        Check if the specified path is a valid toml file.
+    def check_toml_path(toml_path: Union[str, Path], create_path: bool = False) -> Path:
+        """Validate and normalize a `pyproject.toml` path.
+
+        Ensures the provided path refers to a file named `pyproject.toml`,
+        optionally creates the parent directory, and returns the absolute
+        path to the file.
 
         Args:
-            toml_path (str): Path to the toml file.
+            toml_path: Path to the `pyproject.toml` file or its string form.
+            create_path: When True, create the parent directory if missing.
 
         Returns:
-            bool: True if the path is a valid toml file, False otherwise.
+            Path: Absolute path to the `pyproject.toml` file.
+
+        Raises:
+            ValueError: If the filename is not `pyproject.toml` or the parent
+                directory does not exist (and `create_path` is False).
         """
         toml_path = Path(toml_path) if not isinstance(toml_path, Path) else toml_path
         if toml_path.name != "pyproject.toml":
