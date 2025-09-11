@@ -33,7 +33,7 @@ class UVVenvManager(VenvManager):
         """
         return os.environ.get("UV_PROJECT_ENVIRONMENT", ".venv")
 
-    def __init__(self, toml_path, env_path, **kwargs):
+    def __init__(self, toml_path: Union[str, Path], env_path: Union[str, Path], **kwargs):
         """Initialize the manager.
 
         Args:
@@ -41,7 +41,7 @@ class UVVenvManager(VenvManager):
             env_path (Path | str): Path to the environment directory.
             **kwargs: Forwarded to the base manager if applicable.
         """
-        self.toml_path = toml_path
+        self.toml_path = toml_path if isinstance(toml_path, Path) else Path(toml_path)
         self._enterpath = None
         super().__init__(env_path)
 
@@ -130,14 +130,17 @@ class UVVenvManager(VenvManager):
         stderr_callback: Optional[Callable[[str], None]] = None,
     ) -> UVVenvManager:
         """
-        Create a new virtual environment at the specified path.
+        Create a new virtual environment for a project.
 
         Args:
-            toml_path (str): Path to the environment toml.
-            **kwargs: Additional keyword arguments to pass to the VenvManager constructor.
+            toml_path: Path to the project's `pyproject.toml`.
+            python: Optional Python version or interpreter path for `uv`.
+            description: Optional project description when initializing.
+            stdout_callback: Callback receiving stdout lines.
+            stderr_callback: Callback receiving stderr lines.
 
         Returns:
-            VenvManager: A new VenvManager instance.
+            UVVenvManager: A new manager instance.
         """
         toml_path = cls.check_toml_path(toml_path, create_path=True)
         enterpath = os.getcwd()
@@ -219,7 +222,7 @@ class UVVenvManager(VenvManager):
             **kwargs: Additional keyword arguments to pass to the VenvManager constructor.
 
         Returns:
-            Tuple[VenvManager, bool]: A tuple containing the VenvManager instance and a boolean
+            Tuple[UVVenvManager, bool]: A tuple containing the manager instance and a boolean
             indicating if the environment was created.
         """
         toml_path = cls.check_toml_path(toml_path)
@@ -232,7 +235,7 @@ class UVVenvManager(VenvManager):
     def get_virtual_env(
         cls,
         env_path: Union[str, Path],
-    ) -> VenvManager:
+    ) -> UVVenvManager:
         """
         Return an VenvManager instance for an existing virtual environment.
 
@@ -240,11 +243,11 @@ class UVVenvManager(VenvManager):
             env_path (Union[str, Path]): Path to the virtual environment.
 
         Returns:
-            VenvManager: An instance of VenvManager.
+            UVVenvManager: An instance managing the environment.
 
         Raises:
             ValueError: If the specified directory does not contain a valid environment.
-        """  #
+        """
         if not isinstance(env_path, Path):
             env_path = Path(env_path)
         if not env_path.exists():
