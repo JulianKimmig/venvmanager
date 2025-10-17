@@ -231,8 +231,8 @@ class BaseVenvManager(ABC):
             if os.environ.get("SUBPROCESS_MONITOR_PORT", None) is not None:
                 res = asyncio.run(
                     subprocess_monitor.send_spawn_request(
-                        args[0],
-                        args[1:],
+                        cmd[0],
+                        cmd[1:],
                         env=kwargs.get("env", {}),
                         port=os.environ["SUBPROCESS_MONITOR_PORT"],
                     )
