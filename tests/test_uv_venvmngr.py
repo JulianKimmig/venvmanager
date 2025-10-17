@@ -170,5 +170,4 @@ class TestUVVenvManager(unittest.TestCase):
         with open(self.toml_path, "r") as f:
             content = f.read()
 
-        print(content)
-        return True
+        assert content
