@@ -162,7 +162,11 @@ class UVVenvManager(VenvManager):
                     init_cmd.extend(["--python", str(python)])
                 if description:
                     init_cmd.extend(["--description", description])
-                subprocess.run(init_cmd)
+                run_subprocess_with_streams(
+                    init_cmd,
+                    stdout_callback,
+                    stderr_callback,
+                )
 
             # Create the virtual environment
             # Use Popen to create the virtual environment and stream output
@@ -254,13 +258,17 @@ class UVVenvManager(VenvManager):
             env_path = Path(env_path)
         if not env_path.exists():
             raise ValueError("Invalid environment path.")
-        if env_path.name == "pyproject.toml":
-            tomlpath = cls.check_toml_path(env_path)
-            if not tomlpath.exists():
-                raise ValueError("Invalid toml path.")
-            env_path = env_path.parent / cls.get_default_venv_name()
-            if not env_path.exists():
-                raise ValueError("Invalid environment path.")
-            return UVVenvManager(tomlpath, env_path)
+        
+        if env_path.is_dir():
+            env_path = env_path.parent / "pyproject.toml"
 
-        return UVVenvManager(env_path.parent / "pyproject.toml", env_path)
+        
+        tomlpath = cls.check_toml_path(env_path)
+        if not tomlpath.exists():
+            raise ValueError("Invalid toml path.")
+        env_path = env_path.parent / cls.get_default_venv_name()
+        if not env_path.exists():
+            raise ValueError("Invalid environment path.")
+        return UVVenvManager(tomlpath, env_path)
+
+        
