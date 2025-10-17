@@ -900,10 +900,11 @@ wheels = [
 
 [[package]]
 name = "venvmngr"
-version = "0.1.14"
+version = "0.1.15"
 source = { editable = "." }
 dependencies = [
     { name = "packaging" },
+    { name = "psutil" },
     { name = "requests" },
     { name = "subprocess-monitor" },
     { name = "uv" },
@@ -923,6 +924,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "packaging" },
+    { name = "psutil", specifier = ">=7.0.0" },
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "requests" },
     { name = "subprocess-monitor", specifier = ">=0.2.0" },
