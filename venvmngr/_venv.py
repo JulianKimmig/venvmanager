@@ -12,6 +12,7 @@ import subprocess
 from typing import List, Optional, Union, Literal, Tuple
 from collections.abc import Callable
 from packaging.version import Version
+from packaging.requirements import Requirement
 from ._base import BaseVenvManager, PackageListEntry
 from .utils import locate_system_pythons, run_subprocess_with_streams
 
@@ -62,29 +63,15 @@ class VenvManager(BaseVenvManager):
         Raises:
             ValueError: If the package name is empty or invalid.
         """
-        if isinstance(version, Version):
-            version = str(version)
+        name = package_name.strip().replace("_", "-")
+        if isinstance(version, Version): version = str(version)
+        spec = f"{name}{version or ''}" if (version and version[:1] in "<>!=~=") else \
+                (f"{name}=={version}" if version else name)
+        # Validate
+        Requirement(spec)  # raises on invalid
+        return spec
 
-        package_name = package_name.strip()
-        if version:
-            version = version.strip()
-
-        if not package_name:
-            raise ValueError("Package name cannot be empty.")
-
-        if " " in package_name:
-            raise ValueError("Package name cannot contain spaces.")
-
-        # Replace underscores with hyphens for packages that use underscores
-        package_name = package_name.replace("_", "-")
-
-        if version:
-            if version[0] in ("<", ">", "="):
-                return f"{package_name}{version}"
-            else:
-                return f"{package_name}=={version}"
-
-        return package_name
+     
 
     def install_package(
         self,
@@ -190,6 +177,8 @@ class VenvManager(BaseVenvManager):
         if not isinstance(env_path, Path):
             env_path = Path(env_path)
 
+        
+
         if not python_executable:
             pythons = locate_system_pythons()
 
@@ -222,6 +211,7 @@ class VenvManager(BaseVenvManager):
 
             python_executable = pythons[0]["executable"]
 
+        env_path.parent.mkdir(parents=True, exist_ok=True)
         # Create the virtual environment
         # Use Popen to create the virtual environment and stream output
         run_subprocess_with_streams(
@@ -229,8 +219,9 @@ class VenvManager(BaseVenvManager):
             stdout_callback,
             stderr_callback,
         )
-
-        return cls(env_path)
+        mng = cls(env_path)
+        mng.install_package("pip", upgrade=True)
+        return mng
 
     @classmethod
     def get_or_create_virtual_env(
