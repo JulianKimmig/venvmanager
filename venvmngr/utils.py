@@ -7,7 +7,6 @@ import threading
 import sys
 import shutil
 
-
 def locate_system_pythons():
     """Discover available system Python interpreters.
 

@@ -15,8 +15,6 @@ from ._venv import VenvManager
 from .utils import run_subprocess_with_streams, get_python_executable
 
 
-PYEXE = get_python_executable()
-
 
 class UVVenvManager(VenvManager):
     """Venv manager powered by the `uv` tool.
@@ -25,6 +23,10 @@ class UVVenvManager(VenvManager):
     dependencies and to create/sync the environment.
     """
 
+    @classmethod
+    def pyexe(cls) -> str:
+        return get_python_executable()
+        
     @classmethod
     def get_default_venv_name(cls) -> str:
         """Return the default virtual environment directory name.
@@ -78,7 +80,7 @@ class UVVenvManager(VenvManager):
         with self:
             # if ">" in package_version or "<" in package_version:
             # package_version = f'"{package_version}"'
-            _install = [PYEXE, "-m", "uv", "add", package_version]
+            _install = [self.pyexe(), "-m", "uv", "add", package_version]
 
             run_subprocess_with_streams(
                 _install,
@@ -88,7 +90,7 @@ class UVVenvManager(VenvManager):
 
             if upgrade:
                 _upgrade = [
-                    PYEXE,
+                    self.pyexe(),
                     "-m",
                     "uv",
                     "lock",
@@ -101,7 +103,7 @@ class UVVenvManager(VenvManager):
                     stderr_callback,
                 )
             run_subprocess_with_streams(
-                [PYEXE, "-m", "uv", "sync"], stdout_callback, stderr_callback
+                [self.pyexe(), "-m", "uv", "sync"], stdout_callback, stderr_callback
             )
 
     def remove_package(self, package_name: str):
@@ -113,11 +115,11 @@ class UVVenvManager(VenvManager):
         """
         with self:
             try:
-                subprocess.check_call([PYEXE, "-m", "uv", "remove", package_name])
+                subprocess.check_call([self.pyexe(), "-m", "uv", "remove", package_name])
             except subprocess.CalledProcessError as exc:
                 raise ValueError("Failed to uninstall package.") from exc
             run_subprocess_with_streams(
-                [PYEXE, "-m", "uv", "sync"],
+                [self.pyexe(), "-m", "uv", "sync"],
             )
 
     @classmethod
@@ -148,7 +150,7 @@ class UVVenvManager(VenvManager):
             os.chdir(toml_path.parent)
             if not toml_path.exists():
                 init_cmd = [
-                    PYEXE,
+                    cls.pyexe(),
                     "-m",
                     "uv",
                     "init",
@@ -164,7 +166,7 @@ class UVVenvManager(VenvManager):
 
             # Create the virtual environment
             # Use Popen to create the virtual environment and stream output
-            _env_init = [PYEXE, "-m", "uv", "venv"]
+            _env_init = [cls.pyexe(), "-m", "uv", "venv"]
             if python:
                 _env_init.extend(["--python", str(python)])
 
