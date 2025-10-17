@@ -12,7 +12,7 @@ import subprocess
 from typing import List, Optional, Union, Literal, Tuple
 from collections.abc import Callable
 from packaging.version import Version
-from packaging.requirements import Requirement
+from packaging.requirements import Requirement, InvalidRequirement
 from ._base import BaseVenvManager, PackageListEntry
 from .utils import locate_system_pythons, run_subprocess_with_streams
 
@@ -65,10 +65,14 @@ class VenvManager(BaseVenvManager):
         """
         name = package_name.strip().replace("_", "-")
         if isinstance(version, Version): version = str(version)
-        spec = f"{name}{version or ''}" if (version and version[:1] in "<>!=~=") else \
-                (f"{name}=={version}" if version else name)
+        ver = (version or "").strip()
+        spec = f"{name}{ver}" if (ver and ver[:1] in "<>!=~=") else \
+               (f"{name}=={ver}" if ver else name)
         # Validate
-        Requirement(spec)  # raises on invalid
+        try:
+            Requirement(spec)  # raises on invalid
+        except InvalidRequirement as e:
+            raise ValueError(str(e)) from e # raises on invalid
         return spec
 
      
