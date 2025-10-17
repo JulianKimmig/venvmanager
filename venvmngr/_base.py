@@ -116,12 +116,7 @@ class BaseVenvManager(ABC):
         Args:
             package_name (str): The name of the package to remove.
         """
-        try:
-            subprocess.check_call(
-                [str(self.python_exe), "-m", "pip", "uninstall", "-y", package_name]
-            )
-        except subprocess.CalledProcessError as exc:
-            raise ValueError("Failed to uninstall package.") from exc
+        
 
     def get_local_package(self, package_name: str) -> Optional[PackageListEntry]:
         """
@@ -238,7 +233,7 @@ class BaseVenvManager(ABC):
                     subprocess_monitor.send_spawn_request(
                         args[0],
                         args[1:],
-                        env={},
+                        env=kwargs.get("env", {}),
                         port=os.environ["SUBPROCESS_MONITOR_PORT"],
                     )
                 )
