@@ -10,7 +10,7 @@ from typing import Optional, Callable, Sequence, Mapping, Union
 from pathlib import Path
 import asyncio
 
-def locate_system_pythons():
+def locate_system_pythons() -> list[dict]:
     """Discover available system Python interpreters.
 
     Uses `where` on Windows and `which` on POSIX to find `python`
@@ -46,6 +46,8 @@ def locate_system_pythons():
             }
 
             pyths.append(dat)
+        if not pyths:
+            raise ValueError("No suitable system Python found.")
         return pyths
     except Exception as exc:
         raise ValueError("Failed to locate system Python.") from exc
