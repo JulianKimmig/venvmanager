@@ -6,7 +6,9 @@ from packaging.version import Version
 import threading
 import sys
 import shutil
-
+from typing import Optional, Callable, Sequence, Mapping, Union
+from pathlib import Path
+import asyncio
 
 def locate_system_pythons():
     """Discover available system Python interpreters.
@@ -118,3 +120,78 @@ def get_python_executable() -> str:
 
     # Default to the current executable (should be a valid Python interpreter)
     return sys.executable
+
+
+async def arun_subprocess_with_streams(
+    args: Sequence[str],
+    stdout_callback: Optional[Callable[[str], None]] = None,
+    stderr_callback: Optional[Callable[[str], None]] = None,
+    *,
+    env: Optional[Mapping[str, str]] = None,
+    cwd: Optional[Union[str, Path]] = None,
+) -> tuple[int, str, str]:
+    """Async variant of run_subprocess_with_streams with streaming callbacks."""
+    proc = await asyncio.create_subprocess_exec(
+        *args,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+        env=env,
+        cwd=str(cwd) if cwd is not None else None,
+    )
+
+    collected_out: list[str] = []
+    collected_err: list[str] = []
+
+    async def _forward(
+        reader: asyncio.StreamReader,
+        cb: Optional[Callable[[str], None]],
+        collector: list[str],
+    ):
+        while True:
+            chunk = await reader.readline()
+            if not chunk:
+                break
+            line = chunk.decode(errors="replace")
+            collector.append(line)
+            if cb:
+                res = cb(line)
+                if asyncio.iscoroutine(res):
+                    await res
+
+    try:
+        await asyncio.wait(
+            [
+                asyncio.create_task(
+                    _forward(proc.stdout, stdout_callback, collected_out)
+                ),
+                asyncio.create_task(
+                    _forward(proc.stderr, stderr_callback, collected_err)
+                ),
+            ],
+            return_when=asyncio.ALL_COMPLETED,
+        )
+        returncode = await proc.wait()
+    except asyncio.CancelledError:
+        try:
+            proc.terminate()
+        except ProcessLookupError:
+            pass
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=3)
+        except asyncio.TimeoutError:
+            try:
+                proc.kill()
+            except ProcessLookupError:
+                pass
+            await proc.wait()
+        raise
+
+    if returncode != 0:
+        raise ValueError(f"Failed to call {' '.join(args)}")
+
+    return returncode, "".join(collected_out), "".join(collected_err)
+
+
+async def alocate_system_pythons():
+    """Async wrapper around locate_system_pythons using a worker thread."""
+    return await asyncio.to_thread(locate_system_pythons)

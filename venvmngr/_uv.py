@@ -12,10 +12,12 @@ from collections.abc import Callable
 import subprocess
 from packaging.version import Version
 from ._venv import VenvManager
-from .utils import run_subprocess_with_streams, get_python_executable
+from .utils import (
+    run_subprocess_with_streams,
+    get_python_executable,
+    arun_subprocess_with_streams,
+)
 
-
-PYEXE = get_python_executable()
 
 
 class UVVenvManager(VenvManager):
@@ -25,6 +27,10 @@ class UVVenvManager(VenvManager):
     dependencies and to create/sync the environment.
     """
 
+    @classmethod
+    def pyexe(cls) -> str:
+        return get_python_executable()
+        
     @classmethod
     def get_default_venv_name(cls) -> str:
         """Return the default virtual environment directory name.
@@ -78,7 +84,7 @@ class UVVenvManager(VenvManager):
         with self:
             # if ">" in package_version or "<" in package_version:
             # package_version = f'"{package_version}"'
-            _install = [PYEXE, "-m", "uv", "add", package_version]
+            _install = [self.pyexe(), "-m", "uv", "add", package_version]
 
             run_subprocess_with_streams(
                 _install,
@@ -88,7 +94,7 @@ class UVVenvManager(VenvManager):
 
             if upgrade:
                 _upgrade = [
-                    PYEXE,
+                    self.pyexe(),
                     "-m",
                     "uv",
                     "lock",
@@ -101,8 +107,39 @@ class UVVenvManager(VenvManager):
                     stderr_callback,
                 )
             run_subprocess_with_streams(
-                [PYEXE, "-m", "uv", "sync"], stdout_callback, stderr_callback
+                [self.pyexe(), "-m", "uv", "sync"], stdout_callback, stderr_callback
             )
+        
+    async def ainstall_package(
+        self,
+        package_name: str,
+        version: Optional[Union[Version, str]] = None,
+        upgrade: bool = False,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ):
+        package_version = self.package_name_cleaner(package_name, version)
+        with self:
+            await arun_subprocess_with_streams(
+                [self.pyexe(), "-m", "uv", "add", package_version],
+                stdout_callback=stdout_callback,
+                stderr_callback=stderr_callback,
+            )
+
+            if upgrade:
+                await arun_subprocess_with_streams(
+                    [self.pyexe(), "-m", "uv", "lock", "--upgrade-package", package_name],
+                    stdout_callback=stdout_callback,
+                    stderr_callback=stderr_callback,
+                )
+
+            await arun_subprocess_with_streams(
+                [self.pyexe(), "-m", "uv", "sync"],
+                stdout_callback=stdout_callback,
+                stderr_callback=stderr_callback,
+            )
+        
+    
 
     def remove_package(self, package_name: str):
         """
@@ -113,12 +150,19 @@ class UVVenvManager(VenvManager):
         """
         with self:
             try:
-                subprocess.check_call([PYEXE, "-m", "uv", "remove", package_name])
+                subprocess.check_call([self.pyexe(), "-m", "uv", "remove", package_name])
             except subprocess.CalledProcessError as exc:
                 raise ValueError("Failed to uninstall package.") from exc
             run_subprocess_with_streams(
-                [PYEXE, "-m", "uv", "sync"],
+                [self.pyexe(), "-m", "uv", "sync"],
             )
+        
+    async def aremove_package(self, package_name: str):
+        with self:
+            await arun_subprocess_with_streams(
+                [self.pyexe(), "-m", "uv", "remove", package_name]
+            )
+            await arun_subprocess_with_streams([self.pyexe(), "-m", "uv", "sync"])
 
     @classmethod
     def create_virtual_env(
@@ -148,7 +192,7 @@ class UVVenvManager(VenvManager):
             os.chdir(toml_path.parent)
             if not toml_path.exists():
                 init_cmd = [
-                    PYEXE,
+                    cls.pyexe(),
                     "-m",
                     "uv",
                     "init",
@@ -160,11 +204,15 @@ class UVVenvManager(VenvManager):
                     init_cmd.extend(["--python", str(python)])
                 if description:
                     init_cmd.extend(["--description", description])
-                subprocess.run(init_cmd)
+                run_subprocess_with_streams(
+                    init_cmd,
+                    stdout_callback,
+                    stderr_callback,
+                )
 
             # Create the virtual environment
             # Use Popen to create the virtual environment and stream output
-            _env_init = [PYEXE, "-m", "uv", "venv"]
+            _env_init = [cls.pyexe(), "-m", "uv", "venv"]
             if python:
                 _env_init.extend(["--python", str(python)])
 
@@ -176,7 +224,58 @@ class UVVenvManager(VenvManager):
 
             env_path = toml_path.parent / cls.get_default_venv_name()
             mng = cls(toml_path, env_path)
-            mng.install_package("pip", upgrade=True)
+            mng._bootstrap_pip(stdout_callback, stderr_callback)
+        finally:
+            os.chdir(enterpath)
+        return mng
+
+    @classmethod
+    async def acreate_virtual_env(
+        cls,
+        toml_path: Union[str, Path],
+        python: Optional[Union[str, Version]] = None,
+        description: Optional[str] = None,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ) -> "UVVenvManager":
+        toml_path = cls.check_toml_path(toml_path, create_path=True)
+        enterpath = os.getcwd()
+        try:
+            os.chdir(toml_path.parent)
+            if not toml_path.exists():
+                init_cmd = [
+                    cls.pyexe(),
+                    "-m",
+                    "uv",
+                    "init",
+                    "--no-workspace",
+                    "--no-pin-python",
+                    "--no-readme",
+                ]
+                if python:
+                    init_cmd.extend(["--python", str(python)])
+                if description:
+                    init_cmd.extend(["--description", description])
+
+                await arun_subprocess_with_streams(
+                    init_cmd,
+                    stdout_callback=stdout_callback,
+                    stderr_callback=stderr_callback,
+                )
+
+            env_init = [cls.pyexe(), "-m", "uv", "venv"]
+            if python:
+                env_init.extend(["--python", str(python)])
+
+            await arun_subprocess_with_streams(
+                env_init,
+                stdout_callback=stdout_callback,
+                stderr_callback=stderr_callback,
+            )
+
+            env_path = toml_path.parent / cls.get_default_venv_name()
+            mng = cls(toml_path, env_path)
+            await mng._abootstrap_pip(stdout_callback, stderr_callback)
         finally:
             os.chdir(enterpath)
         return mng
@@ -225,11 +324,21 @@ class UVVenvManager(VenvManager):
             Tuple[UVVenvManager, bool]: A tuple containing the manager instance and a boolean
             indicating if the environment was created.
         """
-        toml_path = cls.check_toml_path(toml_path)
+        toml_path = cls.check_toml_path(toml_path, create_path=True)
         env_path = toml_path.parent / cls.get_default_venv_name()
         if toml_path.exists() and env_path.exists():
             return cls(toml_path, env_path, **kwargs), False
         return cls.create_virtual_env(toml_path, **kwargs), True
+
+    @classmethod
+    async def aget_or_create_virtual_env(
+        cls, toml_path: Union[str, Path], **kwargs
+    ) -> Tuple["UVVenvManager", bool]:
+        toml_path = cls.check_toml_path(toml_path, create_path=True)
+        env_path = toml_path.parent / cls.get_default_venv_name()
+        if toml_path.exists() and env_path.exists():
+            return cls(toml_path, env_path, **kwargs), False
+        return await cls.acreate_virtual_env(toml_path, **kwargs), True
 
     @classmethod
     def get_virtual_env(
@@ -252,13 +361,17 @@ class UVVenvManager(VenvManager):
             env_path = Path(env_path)
         if not env_path.exists():
             raise ValueError("Invalid environment path.")
-        if env_path.name == "pyproject.toml":
-            tomlpath = cls.check_toml_path(env_path)
-            if not tomlpath.exists():
-                raise ValueError("Invalid toml path.")
-            env_path = env_path.parent / cls.get_default_venv_name()
-            if not env_path.exists():
-                raise ValueError("Invalid environment path.")
-            return UVVenvManager(tomlpath, env_path)
+        
+        if env_path.is_dir():
+            env_path = env_path.parent / "pyproject.toml"
 
-        return UVVenvManager(env_path.parent / "pyproject.toml", env_path)
+        
+        tomlpath = cls.check_toml_path(env_path)
+        if not tomlpath.exists():
+            raise ValueError("Invalid toml path.")
+        env_path = env_path.parent / cls.get_default_venv_name()
+        if not env_path.exists():
+            raise ValueError("Invalid environment path.")
+        return UVVenvManager(tomlpath, env_path)
+
+        
