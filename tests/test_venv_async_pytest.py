@@ -49,3 +49,11 @@ def test_venv_full_flow_async(tmp_path):
         assert manager.package_is_installed(PKG) is False
 
     asyncio.run(run())
+
+
+@pytest.mark.skipif(not has_async_api(), reason="Async API not available in this build")
+@pytest.mark.asyncio
+async def test_venv_async_create_min_version_failure(tmp_path):
+    env_dir = tmp_path / "async-too-new"
+    with pytest.raises(ValueError):
+        await VenvManager.acreate_virtual_env(env_dir, min_python="99.0")
