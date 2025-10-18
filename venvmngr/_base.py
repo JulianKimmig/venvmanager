@@ -118,6 +118,68 @@ class BaseVenvManager(ABC):
         """
         
 
+    # Async wrappers default to running the sync implementation off the loop.
+    async def ainstall_package(
+        self,
+        package_name: str,
+        version: Optional[Union[Version, str]] = None,
+        upgrade: bool = False,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.install_package(
+                package_name,
+                version=version,
+                upgrade=upgrade,
+                stdout_callback=stdout_callback,
+                stderr_callback=stderr_callback,
+            ),
+        )
+
+    async def aall_packages(self) -> List[PackageListEntry]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.all_packages)
+
+    async def aremove_package(self, package_name: str):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: self.remove_package(package_name)
+        )
+
+    async def arun_module(
+        self, module_name: str, args: List[str] = [], **kwargs
+    ) -> Union[
+        subprocess.CompletedProcess, subprocess.Popen, psutil.Process, None
+    ]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: self.run_module(module_name, args=args, block=True, **kwargs)
+        )
+
+    @classmethod
+    async def acreate_virtual_env(cls, *args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: cls.create_virtual_env(*args, **kwargs)
+        )
+
+    @classmethod
+    async def aget_or_create_virtual_env(cls, *args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: cls.get_or_create_virtual_env(*args, **kwargs)
+        )
+
+    @classmethod
+    async def aget_virtual_env(cls, *args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: cls.get_virtual_env(*args, **kwargs)
+        )
+
     def get_local_package(self, package_name: str) -> Optional[PackageListEntry]:
         """
         Return the package entry for the specified package installed in the virtual environment.

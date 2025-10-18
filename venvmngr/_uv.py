@@ -12,7 +12,11 @@ from collections.abc import Callable
 import subprocess
 from packaging.version import Version
 from ._venv import VenvManager
-from .utils import run_subprocess_with_streams, get_python_executable
+from .utils import (
+    run_subprocess_with_streams,
+    get_python_executable,
+    arun_subprocess_with_streams,
+)
 
 
 
@@ -105,6 +109,37 @@ class UVVenvManager(VenvManager):
             run_subprocess_with_streams(
                 [self.pyexe(), "-m", "uv", "sync"], stdout_callback, stderr_callback
             )
+        
+    async def ainstall_package(
+        self,
+        package_name: str,
+        version: Optional[Union[Version, str]] = None,
+        upgrade: bool = False,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ):
+        package_version = self.package_name_cleaner(package_name, version)
+        with self:
+            await arun_subprocess_with_streams(
+                [self.pyexe(), "-m", "uv", "add", package_version],
+                stdout_callback=stdout_callback,
+                stderr_callback=stderr_callback,
+            )
+
+            if upgrade:
+                await arun_subprocess_with_streams(
+                    [self.pyexe(), "-m", "uv", "lock", "--upgrade-package", package_name],
+                    stdout_callback=stdout_callback,
+                    stderr_callback=stderr_callback,
+                )
+
+            await arun_subprocess_with_streams(
+                [self.pyexe(), "-m", "uv", "sync"],
+                stdout_callback=stdout_callback,
+                stderr_callback=stderr_callback,
+            )
+        
+    
 
     def remove_package(self, package_name: str):
         """
@@ -121,6 +156,13 @@ class UVVenvManager(VenvManager):
             run_subprocess_with_streams(
                 [self.pyexe(), "-m", "uv", "sync"],
             )
+        
+    async def aremove_package(self, package_name: str):
+        with self:
+            await arun_subprocess_with_streams(
+                [self.pyexe(), "-m", "uv", "remove", package_name]
+            )
+            await arun_subprocess_with_streams([self.pyexe(), "-m", "uv", "sync"])
 
     @classmethod
     def create_virtual_env(
@@ -182,7 +224,58 @@ class UVVenvManager(VenvManager):
 
             env_path = toml_path.parent / cls.get_default_venv_name()
             mng = cls(toml_path, env_path)
-            mng.install_package("pip", upgrade=True)
+            mng._bootstrap_pip(stdout_callback, stderr_callback)
+        finally:
+            os.chdir(enterpath)
+        return mng
+
+    @classmethod
+    async def acreate_virtual_env(
+        cls,
+        toml_path: Union[str, Path],
+        python: Optional[Union[str, Version]] = None,
+        description: Optional[str] = None,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ) -> "UVVenvManager":
+        toml_path = cls.check_toml_path(toml_path, create_path=True)
+        enterpath = os.getcwd()
+        try:
+            os.chdir(toml_path.parent)
+            if not toml_path.exists():
+                init_cmd = [
+                    cls.pyexe(),
+                    "-m",
+                    "uv",
+                    "init",
+                    "--no-workspace",
+                    "--no-pin-python",
+                    "--no-readme",
+                ]
+                if python:
+                    init_cmd.extend(["--python", str(python)])
+                if description:
+                    init_cmd.extend(["--description", description])
+
+                await arun_subprocess_with_streams(
+                    init_cmd,
+                    stdout_callback=stdout_callback,
+                    stderr_callback=stderr_callback,
+                )
+
+            env_init = [cls.pyexe(), "-m", "uv", "venv"]
+            if python:
+                env_init.extend(["--python", str(python)])
+
+            await arun_subprocess_with_streams(
+                env_init,
+                stdout_callback=stdout_callback,
+                stderr_callback=stderr_callback,
+            )
+
+            env_path = toml_path.parent / cls.get_default_venv_name()
+            mng = cls(toml_path, env_path)
+            await mng._abootstrap_pip(stdout_callback, stderr_callback)
         finally:
             os.chdir(enterpath)
         return mng
@@ -231,11 +324,21 @@ class UVVenvManager(VenvManager):
             Tuple[UVVenvManager, bool]: A tuple containing the manager instance and a boolean
             indicating if the environment was created.
         """
-        toml_path = cls.check_toml_path(toml_path)
+        toml_path = cls.check_toml_path(toml_path, create_path=True)
         env_path = toml_path.parent / cls.get_default_venv_name()
         if toml_path.exists() and env_path.exists():
             return cls(toml_path, env_path, **kwargs), False
         return cls.create_virtual_env(toml_path, **kwargs), True
+
+    @classmethod
+    async def aget_or_create_virtual_env(
+        cls, toml_path: Union[str, Path], **kwargs
+    ) -> Tuple["UVVenvManager", bool]:
+        toml_path = cls.check_toml_path(toml_path, create_path=True)
+        env_path = toml_path.parent / cls.get_default_venv_name()
+        if toml_path.exists() and env_path.exists():
+            return cls(toml_path, env_path, **kwargs), False
+        return await cls.acreate_virtual_env(toml_path, **kwargs), True
 
     @classmethod
     def get_virtual_env(

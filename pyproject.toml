@@ -18,7 +18,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
+  "pre-commit>=4.3.0",
   "pytest",
+  "pytest-asyncio>=1.2.0",
+  "pytest-cov>=7.0.0",
 ]
 
 [project.scripts]
@@ -35,6 +38,5 @@ packages = ["venvmngr"]
 [tool.uv]
 # Convenience for developers: install these with `uv sync --dev` (or just `uv sync`)
 dev-dependencies = [
-  "pre-commit>=4.3.0",
-  "pytest",
+  "venvmngr[dev]"
 ]
