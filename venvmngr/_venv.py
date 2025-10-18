@@ -69,18 +69,20 @@ class VenvManager(BaseVenvManager):
             ValueError: If the package name is empty or invalid.
         """
         name = package_name.strip().replace("_", "-")
-        if isinstance(version, Version): version = str(version)
+        if isinstance(version, Version):
+            version = str(version)
         ver = (version or "").strip()
-        spec = f"{name}{ver}" if (ver and ver[:1] in "<>!=~=") else \
-               (f"{name}=={ver}" if ver else name)
+        spec = (
+            f"{name}{ver}"
+            if (ver and ver[:1] in "<>!=~=")
+            else (f"{name}=={ver}" if ver else name)
+        )
         # Validate
         try:
             Requirement(spec)  # raises on invalid
         except InvalidRequirement as e:
-            raise ValueError(str(e)) from e # raises on invalid
+            raise ValueError(str(e)) from e  # raises on invalid
         return spec
-
-     
 
     def install_package(
         self,
@@ -236,8 +238,6 @@ class VenvManager(BaseVenvManager):
         """
         if not isinstance(env_path, Path):
             env_path = Path(env_path)
-
-        
 
         if not python_executable:
             pythons = locate_system_pythons()

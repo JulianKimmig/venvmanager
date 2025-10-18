@@ -116,7 +116,6 @@ class BaseVenvManager(ABC):
         Args:
             package_name (str): The name of the package to remove.
         """
-        
 
     # Async wrappers default to running the sync implementation off the loop.
     async def ainstall_package(
@@ -151,9 +150,7 @@ class BaseVenvManager(ABC):
 
     async def arun_module(
         self, module_name: str, args: List[str] = [], **kwargs
-    ) -> Union[
-        subprocess.CompletedProcess, subprocess.Popen, psutil.Process, None
-    ]:
+    ) -> Union[subprocess.CompletedProcess, subprocess.Popen, psutil.Process, None]:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(
             None, lambda: self.run_module(module_name, args=args, block=True, **kwargs)

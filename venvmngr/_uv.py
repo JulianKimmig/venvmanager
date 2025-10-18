@@ -19,7 +19,6 @@ from .utils import (
 )
 
 
-
 class UVVenvManager(VenvManager):
     """Venv manager powered by the `uv` tool.
 
@@ -30,7 +29,7 @@ class UVVenvManager(VenvManager):
     @classmethod
     def pyexe(cls) -> str:
         return get_python_executable()
-        
+
     @classmethod
     def get_default_venv_name(cls) -> str:
         """Return the default virtual environment directory name.
@@ -39,7 +38,9 @@ class UVVenvManager(VenvManager):
         """
         return os.environ.get("UV_PROJECT_ENVIRONMENT", ".venv")
 
-    def __init__(self, toml_path: Union[str, Path], env_path: Union[str, Path], **kwargs):
+    def __init__(
+        self, toml_path: Union[str, Path], env_path: Union[str, Path], **kwargs
+    ):
         """Initialize the manager.
 
         Args:
@@ -109,7 +110,7 @@ class UVVenvManager(VenvManager):
             run_subprocess_with_streams(
                 [self.pyexe(), "-m", "uv", "sync"], stdout_callback, stderr_callback
             )
-        
+
     async def ainstall_package(
         self,
         package_name: str,
@@ -128,7 +129,14 @@ class UVVenvManager(VenvManager):
 
             if upgrade:
                 await arun_subprocess_with_streams(
-                    [self.pyexe(), "-m", "uv", "lock", "--upgrade-package", package_name],
+                    [
+                        self.pyexe(),
+                        "-m",
+                        "uv",
+                        "lock",
+                        "--upgrade-package",
+                        package_name,
+                    ],
                     stdout_callback=stdout_callback,
                     stderr_callback=stderr_callback,
                 )
@@ -138,8 +146,6 @@ class UVVenvManager(VenvManager):
                 stdout_callback=stdout_callback,
                 stderr_callback=stderr_callback,
             )
-        
-    
 
     def remove_package(self, package_name: str):
         """
@@ -150,13 +156,15 @@ class UVVenvManager(VenvManager):
         """
         with self:
             try:
-                subprocess.check_call([self.pyexe(), "-m", "uv", "remove", package_name])
+                subprocess.check_call(
+                    [self.pyexe(), "-m", "uv", "remove", package_name]
+                )
             except subprocess.CalledProcessError as exc:
                 raise ValueError("Failed to uninstall package.") from exc
             run_subprocess_with_streams(
                 [self.pyexe(), "-m", "uv", "sync"],
             )
-        
+
     async def aremove_package(self, package_name: str):
         with self:
             await arun_subprocess_with_streams(
@@ -361,11 +369,10 @@ class UVVenvManager(VenvManager):
             env_path = Path(env_path)
         if not env_path.exists():
             raise ValueError("Invalid environment path.")
-        
+
         if env_path.is_dir():
             env_path = env_path.parent / "pyproject.toml"
 
-        
         tomlpath = cls.check_toml_path(env_path)
         if not tomlpath.exists():
             raise ValueError("Invalid toml path.")
@@ -373,5 +380,3 @@ class UVVenvManager(VenvManager):
         if not env_path.exists():
             raise ValueError("Invalid environment path.")
         return UVVenvManager(tomlpath, env_path)
-
-        

@@ -28,7 +28,9 @@ def test_cli_end_to_end(tmp_path):
     assert code == 0
     assert env_dir.exists()
 
-    code, out, err = run_cli(["--env", str(env_dir), "install", PKG, "--version", OLD_VERSION])
+    code, out, err = run_cli(
+        ["--env", str(env_dir), "install", PKG, "--version", OLD_VERSION]
+    )
     assert code == 0
 
     code, out, err = run_cli(["--env", str(env_dir), "list"])

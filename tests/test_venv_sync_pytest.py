@@ -74,9 +74,7 @@ def test_get_python_executable_missing(tmp_path):
 
 def test_create_virtual_env_with_explicit_python(tmp_path):
     env_dir = tmp_path / "explicit"
-    manager = VenvManager.create_virtual_env(
-        env_dir, python_executable=sys.executable
-    )
+    manager = VenvManager.create_virtual_env(env_dir, python_executable=sys.executable)
     assert manager.env_path == env_dir
     assert manager.python_exe.exists()
 

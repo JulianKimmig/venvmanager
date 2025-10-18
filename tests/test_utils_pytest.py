@@ -53,7 +53,9 @@ def test_get_python_executable_pyinstaller_branch():
     original_path = os.environ.get("PATH")
     try:
         sys._MEIPASS = "fake-meipass"
-        os.environ["PATH"] = f"{os.environ.get('PATH', '')}:{os.path.dirname(sys.executable)}"
+        os.environ["PATH"] = (
+            f"{os.environ.get('PATH', '')}:{os.path.dirname(sys.executable)}"
+        )
         py = get_python_executable()
         assert Path(py).exists()
     finally:
