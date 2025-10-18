@@ -11,9 +11,15 @@ from pathlib import Path
 import subprocess
 from typing import List, Optional, Union, Literal, Tuple
 from collections.abc import Callable
+import asyncio
 from packaging.version import Version
+from packaging.requirements import Requirement, InvalidRequirement
 from ._base import BaseVenvManager, PackageListEntry
-from .utils import locate_system_pythons, run_subprocess_with_streams
+from .utils import (
+    locate_system_pythons,
+    run_subprocess_with_streams,
+    arun_subprocess_with_streams,
+)
 
 
 class VenvManager(BaseVenvManager):
@@ -62,29 +68,21 @@ class VenvManager(BaseVenvManager):
         Raises:
             ValueError: If the package name is empty or invalid.
         """
+        name = package_name.strip().replace("_", "-")
         if isinstance(version, Version):
             version = str(version)
-
-        package_name = package_name.strip()
-        if version:
-            version = version.strip()
-
-        if not package_name:
-            raise ValueError("Package name cannot be empty.")
-
-        if " " in package_name:
-            raise ValueError("Package name cannot contain spaces.")
-
-        # Replace underscores with hyphens for packages that use underscores
-        package_name = package_name.replace("_", "-")
-
-        if version:
-            if version[0] in ("<", ">", "="):
-                return f"{package_name}{version}"
-            else:
-                return f"{package_name}=={version}"
-
-        return package_name
+        ver = (version or "").strip()
+        spec = (
+            f"{name}{ver}"
+            if (ver and ver[:1] in "<>!=~=")
+            else (f"{name}=={ver}" if ver else name)
+        )
+        # Validate
+        try:
+            Requirement(spec)  # raises on invalid
+        except InvalidRequirement as e:
+            raise ValueError(str(e)) from e  # raises on invalid
+        return spec
 
     def install_package(
         self,
@@ -157,6 +155,57 @@ class VenvManager(BaseVenvManager):
         except subprocess.CalledProcessError as exc:
             raise ValueError("Failed to uninstall package.") from exc
 
+    # Async variants rely on asyncio subprocesses to keep the loop responsive.
+    async def ainstall_package(
+        self,
+        package_name: str,
+        version: Optional[Union[Version, str]] = None,
+        upgrade: bool = False,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ):
+        install_cmd = [str(self.python_exe), "-m", "pip", "install"]
+        package_version = self.package_name_cleaner(package_name, version)
+        install_cmd.append(package_version)
+        if upgrade:
+            install_cmd.append("--upgrade")
+        await arun_subprocess_with_streams(
+            install_cmd,
+            stdout_callback=stdout_callback,
+            stderr_callback=stderr_callback,
+        )
+
+    async def aall_packages(self) -> List[PackageListEntry]:
+        list_cmd = [str(self.python_exe), "-m", "pip", "list", "--format=json"]
+        _, out, _ = await arun_subprocess_with_streams(list_cmd)
+        try:
+            packages = json.loads(out)
+        except json.JSONDecodeError as exc:
+            raise ValueError("Failed to parse pip output.") from exc
+        return [
+            {**pkg, "name": pkg["name"], "version": Version(pkg["version"])}
+            for pkg in packages
+        ]
+
+    async def aremove_package(self, package_name: str):
+        cmd = [str(self.python_exe), "-m", "pip", "uninstall", "-y", package_name]
+        await arun_subprocess_with_streams(cmd)
+
+    async def arun_module(
+        self,
+        module_name: str,
+        args: List[str] = [],
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ) -> int:
+        cmd = [str(self.python_exe), "-m", module_name, *args]
+        rc, _, _ = await arun_subprocess_with_streams(
+            cmd,
+            stdout_callback=stdout_callback,
+            stderr_callback=stderr_callback,
+        )
+        return rc
+
     @classmethod
     def create_virtual_env(
         cls,
@@ -222,6 +271,7 @@ class VenvManager(BaseVenvManager):
 
             python_executable = pythons[0]["executable"]
 
+        env_path.parent.mkdir(parents=True, exist_ok=True)
         # Create the virtual environment
         # Use Popen to create the virtual environment and stream output
         run_subprocess_with_streams(
@@ -229,8 +279,61 @@ class VenvManager(BaseVenvManager):
             stdout_callback,
             stderr_callback,
         )
+        mng = cls(env_path)
+        mng._bootstrap_pip(stdout_callback, stderr_callback)
+        return mng
 
-        return cls(env_path)
+    @classmethod
+    async def acreate_virtual_env(
+        cls,
+        env_path: Union[str, Path],
+        min_python: Optional[Union[str, Version]] = None,
+        max_python: Optional[Union[str, Version]] = None,
+        use: Literal["default", "latest"] = "default",
+        python_executable: Optional[str] = None,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ) -> "VenvManager":
+        if not isinstance(env_path, Path):
+            env_path = Path(env_path)
+
+        if not python_executable:
+            pythons = await asyncio.to_thread(locate_system_pythons)
+
+            if not pythons:
+                raise ValueError("No suitable system Python found.")
+
+            if min_python:
+                if isinstance(min_python, str):
+                    min_python = Version(min_python)
+                pythons = [p for p in pythons if p["version"] >= min_python]
+
+            if max_python:
+                if isinstance(max_python, str):
+                    max_python = Version(max_python)
+                pythons = [p for p in pythons if p["version"] <= max_python]
+
+            if not pythons:
+                raise ValueError(
+                    f"No suitable system Python found within version range {min_python} - {max_python}."
+                )
+
+            if use == "latest":
+                python_mv = max(pythons, key=lambda x: x["version"])["version"]
+                pythons = [p for p in pythons if p["version"] == python_mv]
+
+            python_executable = pythons[0]["executable"]
+
+        env_path.parent.mkdir(parents=True, exist_ok=True)
+
+        await arun_subprocess_with_streams(
+            [python_executable, "-m", "venv", str(env_path)],
+            stdout_callback=stdout_callback,
+            stderr_callback=stderr_callback,
+        )
+        mng = cls(env_path)
+        await mng._abootstrap_pip(stdout_callback, stderr_callback)
+        return mng
 
     @classmethod
     def get_or_create_virtual_env(
@@ -262,6 +365,22 @@ class VenvManager(BaseVenvManager):
             ) from exc
 
     @classmethod
+    async def aget_or_create_virtual_env(
+        cls, env_path: Union[str, Path], **create_kwargs
+    ) -> Tuple["VenvManager", bool]:
+        if not isinstance(env_path, Path):
+            env_path = Path(env_path)
+
+        if not env_path.exists():
+            return await cls.acreate_virtual_env(env_path, **create_kwargs), True
+        try:
+            return cls(env_path), False
+        except FileNotFoundError as exc:
+            raise ValueError(
+                f"Directory {env_path} does not contain a valid virtual environment."
+            ) from exc
+
+    @classmethod
     def get_virtual_env(
         cls,
         env_path: Union[str, Path],
@@ -286,3 +405,37 @@ class VenvManager(BaseVenvManager):
             raise ValueError(
                 f"Directory {env_path} does not contain a valid virtual environment."
             ) from exc
+
+    def _bootstrap_pip(
+        self,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ):
+        run_subprocess_with_streams(
+            [str(self.python_exe), "-m", "ensurepip", "--upgrade"],
+            stdout_callback,
+            stderr_callback,
+        )
+        self.install_package(
+            "pip",
+            upgrade=True,
+            stdout_callback=stdout_callback,
+            stderr_callback=stderr_callback,
+        )
+
+    async def _abootstrap_pip(
+        self,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ):
+        await arun_subprocess_with_streams(
+            [str(self.python_exe), "-m", "ensurepip", "--upgrade"],
+            stdout_callback=stdout_callback,
+            stderr_callback=stderr_callback,
+        )
+        await self.ainstall_package(
+            "pip",
+            upgrade=True,
+            stdout_callback=stdout_callback,
+            stderr_callback=stderr_callback,
+        )

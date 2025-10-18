@@ -1,6 +1,6 @@
 [project]
 name = "venvmngr"
-version = "0.1.15"
+version = "0.2.0"
 description = "managing a local environment"
 readme = "README.md"
 requires-python = ">=3.9"
@@ -13,11 +13,17 @@ dependencies = [
   "packaging",
   "subprocess-monitor>=0.2.0",
   "uv>=0.5.21",
+  "psutil>=2.0.0",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "pre-commit>=4.3.0",
   "pytest",
+  "pytest-asyncio",
+  "pytest-cov",
+  "ruff",
+  "mypy",
 ]
 
 [project.scripts]
@@ -30,10 +36,6 @@ build-backend = "hatchling.build"
 [tool.hatch.build.targets.wheel]
 packages = ["venvmngr"]
 
-# uv configuration
-[tool.uv]
+[dependency-groups]
 # Convenience for developers: install these with `uv sync --dev` (or just `uv sync`)
-dev-dependencies = [
-  "pre-commit>=4.3.0",
-  "pytest",
-]
+dev = ["venvmngr[dev]"]

@@ -116,12 +116,66 @@ class BaseVenvManager(ABC):
         Args:
             package_name (str): The name of the package to remove.
         """
-        try:
-            subprocess.check_call(
-                [str(self.python_exe), "-m", "pip", "uninstall", "-y", package_name]
-            )
-        except subprocess.CalledProcessError as exc:
-            raise ValueError("Failed to uninstall package.") from exc
+
+    # Async wrappers default to running the sync implementation off the loop.
+    async def ainstall_package(
+        self,
+        package_name: str,
+        version: Optional[Union[Version, str]] = None,
+        upgrade: bool = False,
+        stdout_callback: Optional[Callable[[str], None]] = None,
+        stderr_callback: Optional[Callable[[str], None]] = None,
+    ):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None,
+            lambda: self.install_package(
+                package_name,
+                version=version,
+                upgrade=upgrade,
+                stdout_callback=stdout_callback,
+                stderr_callback=stderr_callback,
+            ),
+        )
+
+    async def aall_packages(self) -> List[PackageListEntry]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self.all_packages)
+
+    async def aremove_package(self, package_name: str):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: self.remove_package(package_name)
+        )
+
+    async def arun_module(
+        self, module_name: str, args: List[str] = [], **kwargs
+    ) -> Union[subprocess.CompletedProcess, subprocess.Popen, psutil.Process, None]:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: self.run_module(module_name, args=args, block=True, **kwargs)
+        )
+
+    @classmethod
+    async def acreate_virtual_env(cls, *args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: cls.create_virtual_env(*args, **kwargs)
+        )
+
+    @classmethod
+    async def aget_or_create_virtual_env(cls, *args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: cls.get_or_create_virtual_env(*args, **kwargs)
+        )
+
+    @classmethod
+    async def aget_virtual_env(cls, *args, **kwargs):
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: cls.get_virtual_env(*args, **kwargs)
+        )
 
     def get_local_package(self, package_name: str) -> Optional[PackageListEntry]:
         """
@@ -236,9 +290,9 @@ class BaseVenvManager(ABC):
             if os.environ.get("SUBPROCESS_MONITOR_PORT", None) is not None:
                 res = asyncio.run(
                     subprocess_monitor.send_spawn_request(
-                        args[0],
-                        args[1:],
-                        env={},
+                        cmd[0],
+                        cmd[1:],
+                        env=kwargs.get("env", {}),
                         port=os.environ["SUBPROCESS_MONITOR_PORT"],
                     )
                 )
