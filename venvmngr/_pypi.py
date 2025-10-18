@@ -247,8 +247,13 @@ def get_package_info(package_name) -> PackageData:
     """
     url = f"https://pypi.org/pypi/{package_name}/json"
     try:
-        response = requests.get( url, timeout=10,
-            headers={"User-Agent": "venvmngr/0.1 (+https://pypi.org/project/venvmngr/)"})
+        response = requests.get(
+            url,
+            timeout=10,
+            headers={
+                "User-Agent": "venvmngr/0.1 (+https://pypi.org/project/venvmngr/)"
+            },
+        )
         response.raise_for_status()
         return response.json()
     except requests.RequestException as exc:

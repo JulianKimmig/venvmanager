@@ -16,7 +16,10 @@ def uv_module_available() -> bool:
     return importlib.util.find_spec("uv") is not None
 
 
-@pytest.mark.skipif(not uv_module_available(), reason="'uv' Python module not available (need python -m uv)")
+@pytest.mark.skipif(
+    not uv_module_available(),
+    reason="'uv' Python module not available (need python -m uv)",
+)
 def test_uv_full_flow_async(tmp_path):
     async def run():
         project_dir = tmp_path / "proj"
@@ -30,7 +33,9 @@ def test_uv_full_flow_async(tmp_path):
         await manager.ainstall_package(PKG, version=MIN_SPEC)
         assert manager.package_is_installed(PKG)
         current_version = manager.get_package_version(PKG)
-        assert isinstance(current_version, Version) and current_version >= Version("2.10")
+        assert isinstance(current_version, Version) and current_version >= Version(
+            "2.10"
+        )
 
         await manager.ainstall_package(PKG, upgrade=True)
         upgraded_version = manager.get_package_version(PKG)
@@ -53,7 +58,10 @@ def test_uv_full_flow_async(tmp_path):
     asyncio.run(run())
 
 
-@pytest.mark.skipif(not uv_module_available(), reason="'uv' Python module not available (need python -m uv)")
+@pytest.mark.skipif(
+    not uv_module_available(),
+    reason="'uv' Python module not available (need python -m uv)",
+)
 def test_check_toml_path_validation(tmp_path):
     bad = tmp_path / "not_pyproject.toml"
     with pytest.raises(ValueError):
@@ -64,7 +72,10 @@ def test_check_toml_path_validation(tmp_path):
     assert out.name == "pyproject.toml" and out.parent.exists()
 
 
-@pytest.mark.skipif(not uv_module_available(), reason="'uv' Python module not available (need python -m uv)")
+@pytest.mark.skipif(
+    not uv_module_available(),
+    reason="'uv' Python module not available (need python -m uv)",
+)
 def test_uv_sync_operations(tmp_path):
     project_dir = tmp_path / "sync_proj"
     toml = project_dir / "pyproject.toml"
@@ -89,7 +100,10 @@ def test_uv_sync_operations(tmp_path):
     assert isinstance(from_env_dir, UVVenvManager)
 
 
-@pytest.mark.skipif(not uv_module_available(), reason="'uv' Python module not available (need python -m uv)")
+@pytest.mark.skipif(
+    not uv_module_available(),
+    reason="'uv' Python module not available (need python -m uv)",
+)
 def test_uv_get_virtual_env_failures(tmp_path):
     missing_dir = tmp_path / "missing_env"
     with pytest.raises(ValueError):

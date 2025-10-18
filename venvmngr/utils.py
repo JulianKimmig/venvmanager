@@ -10,6 +10,7 @@ from typing import Optional, Callable, Sequence, Mapping, Union
 from pathlib import Path
 import asyncio
 
+
 def locate_system_pythons() -> list[dict]:
     """Discover available system Python interpreters.
 
